@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py apply_toss_v2.py)",
+      "Bash(where npm:*)",
+      "Bash(where npx:*)",
+      "Bash(where node:*)",
+      "mcp__google-sheets__create_sheet",
+      "mcp__google-sheets__batch_update_cells",
+      "mcp__claude_ai_Gmail__gmail_get_profile",
+      "mcp__claude_ai_Slack__slack_search_channels",
+      "mcp__claude_ai_Slack__slack_search_public",
+      "mcp__claude_ai_Notion__notion-search"
+    ]
+  }
+}

@@ -1,0 +1,126 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Content-Type" content="application/vnd.ms-excel; charset=euc-kr">
+<table border="1">
+	<tr class="title">
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">상품코드</td>
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">상품명</td>
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">유효기간</td>
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">거래금액</td>	
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">판매가*수량</td>				
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">미교환율</td>
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">교환율</td>
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">총수익</td>
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">수익율</td>
+	</tr>	
+
+
+		<tr>
+			<td style="text-align:center;">G00000209167</td>		<!-- 상품코드  -->
+			<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 30만원</td>	<!--상품명  -->
+			<td style="text-align:center;">365</td>	<!--유효기간  -->
+			<td style="text-align:center;">1,754,280</td>				<!--거래금액-->		
+			<td style="text-align:center;">1,800,000</td>		<!--판매가*수량-->
+			<td style="text-align:center;">0.00</td>				<!--미교환율 -->
+			<td style="text-align:center;">100.00</td>				<!--교환율 -->
+			<td style="text-align:center;">1,080</td>				<!--총 수익-->							
+			<td style="text-align:center;">0.04</td>				<!--수익율 -->			
+		</tr>	
+
+		<tr>
+			<td style="text-align:center;">G00000209168</td>		<!-- 상품코드  -->
+			<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 25만원</td>	<!--상품명  -->
+			<td style="text-align:center;">365</td>	<!--유효기간  -->
+			<td style="text-align:center;">7,684,800</td>				<!--거래금액-->		
+			<td style="text-align:center;">8,000,000</td>		<!--판매가*수량-->
+			<td style="text-align:center;">6.25</td>				<!--미교환율 -->
+			<td style="text-align:center;">93.75</td>				<!--교환율 -->
+			<td style="text-align:center;">-100,500</td>				<!--총 수익-->							
+			<td style="text-align:center;">4.92</td>				<!--수익율 -->			
+		</tr>	
+
+		<tr>
+			<td style="text-align:center;">G00000209169</td>		<!-- 상품코드  -->
+			<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 20만원</td>	<!--상품명  -->
+			<td style="text-align:center;">365</td>	<!--유효기간  -->
+			<td style="text-align:center;">14,216,880</td>				<!--거래금액-->		
+			<td style="text-align:center;">14,800,000</td>		<!--판매가*수량-->
+			<td style="text-align:center;">13.51</td>				<!--미교환율 -->
+			<td style="text-align:center;">86.49</td>				<!--교환율 -->
+			<td style="text-align:center;">-171,520</td>				<!--총 수익-->							
+			<td style="text-align:center;">12.28</td>				<!--수익율 -->			
+		</tr>	
+
+		<tr>
+			<td style="text-align:center;">G00000209170</td>		<!-- 상품코드  -->
+			<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 15만원</td>	<!--상품명  -->
+			<td style="text-align:center;">365</td>	<!--유효기간  -->
+			<td style="text-align:center;">18,762,480</td>				<!--거래금액-->		
+			<td style="text-align:center;">19,800,000</td>		<!--판매가*수량-->
+			<td style="text-align:center;">15.15</td>				<!--미교환율 -->
+			<td style="text-align:center;">84.85</td>				<!--교환율 -->
+			<td style="text-align:center;">-443,520</td>				<!--총 수익-->							
+			<td style="text-align:center;">12.75</td>				<!--수익율 -->			
+		</tr>	
+
+		<tr>
+			<td style="text-align:center;">G00000209171</td>		<!-- 상품코드  -->
+			<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 10만원</td>	<!--상품명  -->
+			<td style="text-align:center;">365</td>	<!--유효기간  -->
+			<td style="text-align:center;">20,562,920</td>				<!--거래금액-->		
+			<td style="text-align:center;">21,700,000</td>		<!--판매가*수량-->
+			<td style="text-align:center;">22.58</td>				<!--미교환율 -->
+			<td style="text-align:center;">77.42</td>				<!--교환율 -->
+			<td style="text-align:center;">-443,520</td>				<!--총 수익-->							
+			<td style="text-align:center;">20.37</td>				<!--수익율 -->			
+		</tr>	
+
+		<tr>
+			<td style="text-align:center;">G00000209172</td>		<!-- 상품코드  -->
+			<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 7만원</td>	<!--상품명  -->
+			<td style="text-align:center;">365</td>	<!--유효기간  -->
+			<td style="text-align:center;">19,037,802</td>				<!--거래금액-->		
+			<td style="text-align:center;">20,370,000</td>		<!--판매가*수량-->
+			<td style="text-align:center;">17.18</td>				<!--미교환율 -->
+			<td style="text-align:center;">82.82</td>				<!--교환율 -->
+			<td style="text-align:center;">-664,678</td>				<!--총 수익-->							
+			<td style="text-align:center;">13.61</td>				<!--수익율 -->			
+		</tr>	
+
+		<tr>
+			<td style="text-align:center;">G00000209173</td>		<!-- 상품코드  -->
+			<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 5만원</td>	<!--상품명  -->
+			<td style="text-align:center;">365</td>	<!--유효기간  -->
+			<td style="text-align:center;">16,121,850</td>				<!--거래금액-->		
+			<td style="text-align:center;">17,250,000</td>		<!--판매가*수량-->
+			<td style="text-align:center;">28.99</td>				<!--미교환율 -->
+			<td style="text-align:center;">71.01</td>				<!--교환율 -->
+			<td style="text-align:center;">-482,650</td>				<!--총 수익-->							
+			<td style="text-align:center;">25.88</td>				<!--수익율 -->			
+		</tr>	
+
+		<tr>
+			<td style="text-align:center;">G00000209174</td>		<!-- 상품코드  -->
+			<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 3만원</td>	<!--상품명  -->
+			<td style="text-align:center;">365</td>	<!--유효기간  -->
+			<td style="text-align:center;">15,432,417</td>				<!--거래금액-->		
+			<td style="text-align:center;">17,130,000</td>		<!--판매가*수량-->
+			<td style="text-align:center;">42.21</td>				<!--미교환율 -->
+			<td style="text-align:center;">57.79</td>				<!--교환율 -->
+			<td style="text-align:center;">-723,690</td>				<!--총 수익-->							
+			<td style="text-align:center;">37.33</td>				<!--수익율 -->			
+		</tr>	
+
+</table> 	
+

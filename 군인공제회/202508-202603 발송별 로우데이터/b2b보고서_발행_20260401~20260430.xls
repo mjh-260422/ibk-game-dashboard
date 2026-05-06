@@ -1,0 +1,371 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Content-Type" content="application/vnd.ms-excel; charset=euc-kr">
+<table border="1">
+	<tr>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >담당자</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >발송일</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >등록일</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >광고주</td>		
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >캠페인번호</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >발송번호</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >캠페인명</td>		
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >발송명</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >상품공급사</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >교환처</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >판매상품명</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >판매가</td>				
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >상품공급 수수료</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >상품공급가</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >제공할인율</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >제공가</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >공급사정산기준</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >발송량</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >교환량</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >교환율</td>		
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >업체제공가</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >상품대금</td>
+		<td colspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >추가 수수료</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >발송수익</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >판매수익</td>							
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >미사용 수익</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >총 수익</td>		
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >수익율</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >거래금액</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >판매가*수량</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >미교환율</td>
+		<td rowspan="2" style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;" >기간만료일</td>
+	</tr>
+	<tr>
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">발송비</td>
+		<td style="border:1px solid black;background-color:gray;width:180px;height:30px;text-align:center;">보전받는 금액</td>
+	</tr>
+	
+			<tr>
+				<td style="text-align:center;">오유경</td>				<!--담당자 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.10</td>				<!--발송일 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.09</td>				<!--등록일 -->
+				<td style="text-align:center;">군인공제회(수기발송)</td>				<!--광고주 -->
+				<td style="text-align:center;">C00000039002</td>			<!--발송번호 -->
+				<td style="text-align:center;">S00000040335</td>			<!--발송번호 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월</td>				<!--발송명 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월_3만원</td>				<!--발송명 -->
+				<td style="text-align:center;">클라이프스(사용당)</td>			<!--상품공급사 -->
+				<td style="text-align:center;">신세계백화점,이마트</td>				<!--교환처 -->
+				<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 3만원</td>				<!--판매상품명 -->
+				<td style="text-align:center;">30,000</td>				<!--판매가-->
+				<td style="text-align:center;">2.50</td>			<!--상품공급 수수료 -->
+				<td style="text-align:center;">29,250</td>						<!--상품공급가 -->
+				<td style="text-align:center;">9.91</td>		<!--제공할인율 -->
+				<td style="text-align:center;">27,027</td>							<!--제공가 -->
+				<td style="text-align:center;">교환</td>												<!--공급사정산구분 -->
+				<td style="text-align:center;">513</td>				<!--발송량 -->
+				<td style="text-align:center;">144</td>			<!--교환량 -->
+				<td style="text-align:center;">28.07</td>		<!--교환율 -->
+				<td style="text-align:center;">13,864,851</td>								<!--업체제공가-->
+				<td style="text-align:center;">4,212,000</td>													<!--상품대금 -->
+				<td style="text-align:center;">45</td>			<!--추가수수료-발송비 -->
+				<td style="text-align:center;">0</td>			<!--추가수수료-보전받는 금액 -->					
+				<td style="text-align:center;">0</td>						<!--발송수익 -->
+				<td style="text-align:center;">-320,112</td>						<!--판매수익 -->
+				<td style="text-align:center;">0</td>						<!--미사용수익 -->
+				<td style="text-align:center;">-320,112</td>							<!--총수익 -->				
+				<td style="text-align:center;">69.45</td>			<!--수익율 -->				
+				<td style="text-align:center;">13,864,851</td>			<!--거래금액 -->
+				<td style="text-align:center;">15,390,000</td>			<!--판매가*수량 -->
+				<td style="text-align:center;">71.93</td>							<!--미교환율 -->
+				<td style="text-align:center;">20270410</td>	<!--기간만료일 -->	
+	  
+			<tr>
+				<td style="text-align:center;">오유경</td>				<!--담당자 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.10</td>				<!--발송일 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.09</td>				<!--등록일 -->
+				<td style="text-align:center;">군인공제회(수기발송)</td>				<!--광고주 -->
+				<td style="text-align:center;">C00000039002</td>			<!--발송번호 -->
+				<td style="text-align:center;">S00000040336</td>			<!--발송번호 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월</td>				<!--발송명 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월_5만원</td>				<!--발송명 -->
+				<td style="text-align:center;">클라이프스(사용당)</td>			<!--상품공급사 -->
+				<td style="text-align:center;">신세계백화점,이마트</td>				<!--교환처 -->
+				<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 5만원</td>				<!--판매상품명 -->
+				<td style="text-align:center;">50,000</td>				<!--판매가-->
+				<td style="text-align:center;">2.50</td>			<!--상품공급 수수료 -->
+				<td style="text-align:center;">48,750</td>						<!--상품공급가 -->
+				<td style="text-align:center;">6.54</td>		<!--제공할인율 -->
+				<td style="text-align:center;">46,730</td>							<!--제공가 -->
+				<td style="text-align:center;">교환</td>												<!--공급사정산구분 -->
+				<td style="text-align:center;">393</td>				<!--발송량 -->
+				<td style="text-align:center;">132</td>			<!--교환량 -->
+				<td style="text-align:center;">33.59</td>		<!--교환율 -->
+				<td style="text-align:center;">18,364,890</td>								<!--업체제공가-->
+				<td style="text-align:center;">6,435,000</td>													<!--상품대금 -->
+				<td style="text-align:center;">45</td>			<!--추가수수료-발송비 -->
+				<td style="text-align:center;">0</td>			<!--추가수수료-보전받는 금액 -->					
+				<td style="text-align:center;">0</td>						<!--발송수익 -->
+				<td style="text-align:center;">-266,640</td>						<!--판매수익 -->
+				<td style="text-align:center;">0</td>						<!--미사용수익 -->
+				<td style="text-align:center;">-266,640</td>							<!--총수익 -->				
+				<td style="text-align:center;">64.86</td>			<!--수익율 -->				
+				<td style="text-align:center;">18,364,890</td>			<!--거래금액 -->
+				<td style="text-align:center;">19,650,000</td>			<!--판매가*수량 -->
+				<td style="text-align:center;">66.41</td>							<!--미교환율 -->
+				<td style="text-align:center;">20270410</td>	<!--기간만료일 -->	
+	  
+			<tr>
+				<td style="text-align:center;">오유경</td>				<!--담당자 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.10</td>				<!--발송일 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.09</td>				<!--등록일 -->
+				<td style="text-align:center;">군인공제회(수기발송)</td>				<!--광고주 -->
+				<td style="text-align:center;">C00000039002</td>			<!--발송번호 -->
+				<td style="text-align:center;">S00000040337</td>			<!--발송번호 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월</td>				<!--발송명 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월_7만원</td>				<!--발송명 -->
+				<td style="text-align:center;">클라이프스(사용당)</td>			<!--상품공급사 -->
+				<td style="text-align:center;">신세계백화점,이마트</td>				<!--교환처 -->
+				<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 7만원</td>				<!--판매상품명 -->
+				<td style="text-align:center;">70,000</td>				<!--판매가-->
+				<td style="text-align:center;">2.50</td>			<!--상품공급 수수료 -->
+				<td style="text-align:center;">68,250</td>						<!--상품공급가 -->
+				<td style="text-align:center;">6.54</td>		<!--제공할인율 -->
+				<td style="text-align:center;">65,422</td>							<!--제공가 -->
+				<td style="text-align:center;">교환</td>												<!--공급사정산구분 -->
+				<td style="text-align:center;">300</td>				<!--발송량 -->
+				<td style="text-align:center;">129</td>			<!--교환량 -->
+				<td style="text-align:center;">43.00</td>		<!--교환율 -->
+				<td style="text-align:center;">19,626,600</td>								<!--업체제공가-->
+				<td style="text-align:center;">8,804,250</td>													<!--상품대금 -->
+				<td style="text-align:center;">45</td>			<!--추가수수료-발송비 -->
+				<td style="text-align:center;">0</td>			<!--추가수수료-보전받는 금액 -->					
+				<td style="text-align:center;">0</td>						<!--발송수익 -->
+				<td style="text-align:center;">-364,812</td>						<!--판매수익 -->
+				<td style="text-align:center;">0</td>						<!--미사용수익 -->
+				<td style="text-align:center;">-364,812</td>							<!--총수익 -->				
+				<td style="text-align:center;">55.07</td>			<!--수익율 -->				
+				<td style="text-align:center;">19,626,600</td>			<!--거래금액 -->
+				<td style="text-align:center;">21,000,000</td>			<!--판매가*수량 -->
+				<td style="text-align:center;">57.00</td>							<!--미교환율 -->
+				<td style="text-align:center;">20270410</td>	<!--기간만료일 -->	
+	  
+			<tr>
+				<td style="text-align:center;">오유경</td>				<!--담당자 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.10</td>				<!--발송일 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.09</td>				<!--등록일 -->
+				<td style="text-align:center;">군인공제회(수기발송)</td>				<!--광고주 -->
+				<td style="text-align:center;">C00000039002</td>			<!--발송번호 -->
+				<td style="text-align:center;">S00000040338</td>			<!--발송번호 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월</td>				<!--발송명 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월_10만원</td>				<!--발송명 -->
+				<td style="text-align:center;">클라이프스(사용당)</td>			<!--상품공급사 -->
+				<td style="text-align:center;">신세계백화점,이마트</td>				<!--교환처 -->
+				<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 10만원</td>				<!--판매상품명 -->
+				<td style="text-align:center;">100,000</td>				<!--판매가-->
+				<td style="text-align:center;">2.50</td>			<!--상품공급 수수료 -->
+				<td style="text-align:center;">97,500</td>						<!--상품공급가 -->
+				<td style="text-align:center;">5.24</td>		<!--제공할인율 -->
+				<td style="text-align:center;">94,760</td>							<!--제공가 -->
+				<td style="text-align:center;">교환</td>												<!--공급사정산구분 -->
+				<td style="text-align:center;">250</td>				<!--발송량 -->
+				<td style="text-align:center;">101</td>			<!--교환량 -->
+				<td style="text-align:center;">40.40</td>		<!--교환율 -->
+				<td style="text-align:center;">23,690,000</td>								<!--업체제공가-->
+				<td style="text-align:center;">9,847,500</td>													<!--상품대금 -->
+				<td style="text-align:center;">45</td>			<!--추가수수료-발송비 -->
+				<td style="text-align:center;">0</td>			<!--추가수수료-보전받는 금액 -->					
+				<td style="text-align:center;">0</td>						<!--발송수익 -->
+				<td style="text-align:center;">-276,740</td>						<!--판매수익 -->
+				<td style="text-align:center;">0</td>						<!--미사용수익 -->
+				<td style="text-align:center;">-276,740</td>							<!--총수익 -->				
+				<td style="text-align:center;">58.38</td>			<!--수익율 -->				
+				<td style="text-align:center;">23,690,000</td>			<!--거래금액 -->
+				<td style="text-align:center;">25,000,000</td>			<!--판매가*수량 -->
+				<td style="text-align:center;">59.60</td>							<!--미교환율 -->
+				<td style="text-align:center;">20270410</td>	<!--기간만료일 -->	
+	  
+			<tr>
+				<td style="text-align:center;">오유경</td>				<!--담당자 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.10</td>				<!--발송일 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.09</td>				<!--등록일 -->
+				<td style="text-align:center;">군인공제회(수기발송)</td>				<!--광고주 -->
+				<td style="text-align:center;">C00000039002</td>			<!--발송번호 -->
+				<td style="text-align:center;">S00000040339</td>			<!--발송번호 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월</td>				<!--발송명 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월_15만원</td>				<!--발송명 -->
+				<td style="text-align:center;">클라이프스(사용당)</td>			<!--상품공급사 -->
+				<td style="text-align:center;">신세계백화점,이마트</td>				<!--교환처 -->
+				<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 15만원</td>				<!--판매상품명 -->
+				<td style="text-align:center;">150,000</td>				<!--판매가-->
+				<td style="text-align:center;">2.50</td>			<!--상품공급 수수료 -->
+				<td style="text-align:center;">146,250</td>						<!--상품공급가 -->
+				<td style="text-align:center;">5.24</td>		<!--제공할인율 -->
+				<td style="text-align:center;">142,140</td>							<!--제공가 -->
+				<td style="text-align:center;">교환</td>												<!--공급사정산구분 -->
+				<td style="text-align:center;">117</td>				<!--발송량 -->
+				<td style="text-align:center;">48</td>			<!--교환량 -->
+				<td style="text-align:center;">41.03</td>		<!--교환율 -->
+				<td style="text-align:center;">16,630,380</td>								<!--업체제공가-->
+				<td style="text-align:center;">7,020,000</td>													<!--상품대금 -->
+				<td style="text-align:center;">45</td>			<!--추가수수료-발송비 -->
+				<td style="text-align:center;">0</td>			<!--추가수수료-보전받는 금액 -->					
+				<td style="text-align:center;">0</td>						<!--발송수익 -->
+				<td style="text-align:center;">-197,280</td>						<!--판매수익 -->
+				<td style="text-align:center;">0</td>						<!--미사용수익 -->
+				<td style="text-align:center;">-197,280</td>							<!--총수익 -->				
+				<td style="text-align:center;">57.76</td>			<!--수익율 -->				
+				<td style="text-align:center;">16,630,380</td>			<!--거래금액 -->
+				<td style="text-align:center;">17,550,000</td>			<!--판매가*수량 -->
+				<td style="text-align:center;">58.97</td>							<!--미교환율 -->
+				<td style="text-align:center;">20270410</td>	<!--기간만료일 -->	
+	  
+			<tr>
+				<td style="text-align:center;">오유경</td>				<!--담당자 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.10</td>				<!--발송일 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.09</td>				<!--등록일 -->
+				<td style="text-align:center;">군인공제회(수기발송)</td>				<!--광고주 -->
+				<td style="text-align:center;">C00000039002</td>			<!--발송번호 -->
+				<td style="text-align:center;">S00000040340</td>			<!--발송번호 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월</td>				<!--발송명 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월_20만원</td>				<!--발송명 -->
+				<td style="text-align:center;">클라이프스(사용당)</td>			<!--상품공급사 -->
+				<td style="text-align:center;">신세계백화점,이마트</td>				<!--교환처 -->
+				<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 20만원</td>				<!--판매상품명 -->
+				<td style="text-align:center;">200,000</td>				<!--판매가-->
+				<td style="text-align:center;">2.50</td>			<!--상품공급 수수료 -->
+				<td style="text-align:center;">195,000</td>						<!--상품공급가 -->
+				<td style="text-align:center;">3.94</td>		<!--제공할인율 -->
+				<td style="text-align:center;">192,120</td>							<!--제공가 -->
+				<td style="text-align:center;">교환</td>												<!--공급사정산구분 -->
+				<td style="text-align:center;">73</td>				<!--발송량 -->
+				<td style="text-align:center;">33</td>			<!--교환량 -->
+				<td style="text-align:center;">45.21</td>		<!--교환율 -->
+				<td style="text-align:center;">14,024,760</td>								<!--업체제공가-->
+				<td style="text-align:center;">6,435,000</td>													<!--상품대금 -->
+				<td style="text-align:center;">45</td>			<!--추가수수료-발송비 -->
+				<td style="text-align:center;">0</td>			<!--추가수수료-보전받는 금액 -->					
+				<td style="text-align:center;">0</td>						<!--발송수익 -->
+				<td style="text-align:center;">-95,040</td>						<!--판매수익 -->
+				<td style="text-align:center;">0</td>						<!--미사용수익 -->
+				<td style="text-align:center;">-95,040</td>							<!--총수익 -->				
+				<td style="text-align:center;">54.09</td>			<!--수익율 -->				
+				<td style="text-align:center;">14,024,760</td>			<!--거래금액 -->
+				<td style="text-align:center;">14,600,000</td>			<!--판매가*수량 -->
+				<td style="text-align:center;">54.79</td>							<!--미교환율 -->
+				<td style="text-align:center;">20270410</td>	<!--기간만료일 -->	
+	  
+			<tr>
+				<td style="text-align:center;">오유경</td>				<!--담당자 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.10</td>				<!--발송일 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.09</td>				<!--등록일 -->
+				<td style="text-align:center;">군인공제회(수기발송)</td>				<!--광고주 -->
+				<td style="text-align:center;">C00000039002</td>			<!--발송번호 -->
+				<td style="text-align:center;">S00000040341</td>			<!--발송번호 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월</td>				<!--발송명 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월_25만원</td>				<!--발송명 -->
+				<td style="text-align:center;">클라이프스(사용당)</td>			<!--상품공급사 -->
+				<td style="text-align:center;">신세계백화점,이마트</td>				<!--교환처 -->
+				<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 25만원</td>				<!--판매상품명 -->
+				<td style="text-align:center;">250,000</td>				<!--판매가-->
+				<td style="text-align:center;">2.50</td>			<!--상품공급 수수료 -->
+				<td style="text-align:center;">243,750</td>						<!--상품공급가 -->
+				<td style="text-align:center;">3.94</td>		<!--제공할인율 -->
+				<td style="text-align:center;">240,150</td>							<!--제공가 -->
+				<td style="text-align:center;">교환</td>												<!--공급사정산구분 -->
+				<td style="text-align:center;">34</td>				<!--발송량 -->
+				<td style="text-align:center;">13</td>			<!--교환량 -->
+				<td style="text-align:center;">38.24</td>		<!--교환율 -->
+				<td style="text-align:center;">8,165,100</td>								<!--업체제공가-->
+				<td style="text-align:center;">3,168,750</td>													<!--상품대금 -->
+				<td style="text-align:center;">45</td>			<!--추가수수료-발송비 -->
+				<td style="text-align:center;">0</td>			<!--추가수수료-보전받는 금액 -->					
+				<td style="text-align:center;">0</td>						<!--발송수익 -->
+				<td style="text-align:center;">-46,800</td>						<!--판매수익 -->
+				<td style="text-align:center;">0</td>						<!--미사용수익 -->
+				<td style="text-align:center;">-46,800</td>							<!--총수익 -->				
+				<td style="text-align:center;">61.17</td>			<!--수익율 -->				
+				<td style="text-align:center;">8,165,100</td>			<!--거래금액 -->
+				<td style="text-align:center;">8,500,000</td>			<!--판매가*수량 -->
+				<td style="text-align:center;">61.76</td>							<!--미교환율 -->
+				<td style="text-align:center;">20270410</td>	<!--기간만료일 -->	
+	  
+			<tr>
+				<td style="text-align:center;">오유경</td>				<!--담당자 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.10</td>				<!--발송일 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.09</td>				<!--등록일 -->
+				<td style="text-align:center;">군인공제회(수기발송)</td>				<!--광고주 -->
+				<td style="text-align:center;">C00000039002</td>			<!--발송번호 -->
+				<td style="text-align:center;">S00000040342</td>			<!--발송번호 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월</td>				<!--발송명 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월_30만원</td>				<!--발송명 -->
+				<td style="text-align:center;">클라이프스(사용당)</td>			<!--상품공급사 -->
+				<td style="text-align:center;">신세계백화점,이마트</td>				<!--교환처 -->
+				<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 30만원</td>				<!--판매상품명 -->
+				<td style="text-align:center;">300,000</td>				<!--판매가-->
+				<td style="text-align:center;">2.50</td>			<!--상품공급 수수료 -->
+				<td style="text-align:center;">292,500</td>						<!--상품공급가 -->
+				<td style="text-align:center;">2.54</td>		<!--제공할인율 -->
+				<td style="text-align:center;">292,380</td>							<!--제공가 -->
+				<td style="text-align:center;">교환</td>												<!--공급사정산구분 -->
+				<td style="text-align:center;">15</td>				<!--발송량 -->
+				<td style="text-align:center;">5</td>			<!--교환량 -->
+				<td style="text-align:center;">33.33</td>		<!--교환율 -->
+				<td style="text-align:center;">4,385,700</td>								<!--업체제공가-->
+				<td style="text-align:center;">1,462,500</td>													<!--상품대금 -->
+				<td style="text-align:center;">45</td>			<!--추가수수료-발송비 -->
+				<td style="text-align:center;">0</td>			<!--추가수수료-보전받는 금액 -->					
+				<td style="text-align:center;">0</td>						<!--발송수익 -->
+				<td style="text-align:center;">-600</td>						<!--판매수익 -->
+				<td style="text-align:center;">0</td>						<!--미사용수익 -->
+				<td style="text-align:center;">-600</td>							<!--총수익 -->				
+				<td style="text-align:center;">66.64</td>			<!--수익율 -->				
+				<td style="text-align:center;">4,385,700</td>			<!--거래금액 -->
+				<td style="text-align:center;">4,500,000</td>			<!--판매가*수량 -->
+				<td style="text-align:center;">66.67</td>							<!--미교환율 -->
+				<td style="text-align:center;">20270410</td>	<!--기간만료일 -->	
+	  
+			<tr>
+				<td style="text-align:center;">오유경</td>				<!--담당자 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.10</td>				<!--발송일 -->
+				<td style='mso-number-format:\@;text-align:center;'>2026.04.09</td>				<!--등록일 -->
+				<td style="text-align:center;">군인공제회(수기발송)</td>				<!--광고주 -->
+				<td style="text-align:center;">C00000039002</td>			<!--발송번호 -->
+				<td style="text-align:center;">S00000040343</td>			<!--발송번호 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월</td>				<!--발송명 -->
+				<td style="text-align:center;">군인공제회_축하기념품_신세계상품권(윤세희담당자)_26년 4월_35만원</td>				<!--발송명 -->
+				<td style="text-align:center;">클라이프스(사용당)</td>			<!--상품공급사 -->
+				<td style="text-align:center;">신세계백화점,이마트</td>				<!--교환처 -->
+				<td style="text-align:center;">[군인공제회] 신세계 이마트 상품권 35만원</td>				<!--판매상품명 -->
+				<td style="text-align:center;">350,000</td>				<!--판매가-->
+				<td style="text-align:center;">2.50</td>			<!--상품공급 수수료 -->
+				<td style="text-align:center;">341,250</td>						<!--상품공급가 -->
+				<td style="text-align:center;">2.54</td>		<!--제공할인율 -->
+				<td style="text-align:center;">341,109</td>							<!--제공가 -->
+				<td style="text-align:center;">교환</td>												<!--공급사정산구분 -->
+				<td style="text-align:center;">2</td>				<!--발송량 -->
+				<td style="text-align:center;">2</td>			<!--교환량 -->
+				<td style="text-align:center;">100.00</td>		<!--교환율 -->
+				<td style="text-align:center;">682,219</td>								<!--업체제공가-->
+				<td style="text-align:center;">682,500</td>													<!--상품대금 -->
+				<td style="text-align:center;">45</td>			<!--추가수수료-발송비 -->
+				<td style="text-align:center;">0</td>			<!--추가수수료-보전받는 금액 -->					
+				<td style="text-align:center;">0</td>						<!--발송수익 -->
+				<td style="text-align:center;">-280</td>						<!--판매수익 -->
+				<td style="text-align:center;">0</td>						<!--미사용수익 -->
+				<td style="text-align:center;">-280</td>							<!--총수익 -->				
+				<td style="text-align:center;">-0.05</td>			<!--수익율 -->				
+				<td style="text-align:center;">682,219</td>			<!--거래금액 -->
+				<td style="text-align:center;">700,000</td>			<!--판매가*수량 -->
+				<td style="text-align:center;">0.00</td>							<!--미교환율 -->
+				<td style="text-align:center;">20270410</td>	<!--기간만료일 -->	
+	  
+</table>
+

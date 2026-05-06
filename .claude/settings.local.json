@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py -)",
+      "Bash(py apply_toss_design.py)",
+      "mcp__claude_ai_Notion__notion-fetch"
+    ]
+  }
+}
