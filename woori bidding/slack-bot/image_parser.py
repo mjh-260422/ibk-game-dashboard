@@ -54,7 +54,19 @@ def parse_bid_image(image_bytes: bytes, media_type: str) -> BidInfo:
         system=SYSTEM_PROMPT,
     )
 
-    data = json.loads(response.content[0].text)
+    if not response.content or not hasattr(response.content[0], "text"):
+        raise ValueError("Claude API 응답이 비어있거나 유효하지 않음")
+
+    try:
+        data = json.loads(response.content[0].text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Claude API 응답이 유효한 JSON이 아님: {e}") from e
+
+    required = {"bid_number", "event_name", "manager", "is_pin_delivery", "products"}
+    missing = required - set(data.keys())
+    if missing:
+        raise ValueError(f"API 응답에 필수 필드 없음: {missing}")
+
     products = [ProductInfo(**p) for p in data["products"]]
     return BidInfo(
         bid_number=data["bid_number"],
