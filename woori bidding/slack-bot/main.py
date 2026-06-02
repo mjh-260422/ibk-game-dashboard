@@ -68,9 +68,12 @@ async def _process_files(files: list, channel: str, thread_ts: str) -> None:
                     except Exception as e:
                         upload_files(channel, thread_ts, [xlsx], comment=f"📄 견적서 (PDF 변환 실패: {e})")
             except ImportError:
-                pass  # quotation 모듈 미구현 시 견적서 생략
+                print("quotation 모듈 없음 — 견적서 생략")
 
         except Exception as e:
             results.append(f"❌ 처리 실패 ({file.get('name', '?')}): {e}")
 
-    post_thread_reply(channel, thread_ts, "\n\n---\n\n".join(results))
+    try:
+        post_thread_reply(channel, thread_ts, "\n\n---\n\n".join(results))
+    except Exception as e:
+        print(f"Slack 메시지 전송 실패: {e}")
