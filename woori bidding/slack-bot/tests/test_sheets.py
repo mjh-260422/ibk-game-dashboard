@@ -22,7 +22,7 @@ def test_get_supply_fee_unknown_brand():
 def test_get_last_sim_row():
     mock_service = MagicMock()
     mock_service.spreadsheets().values().get().execute.return_value = {
-        "values": [["2026-05-27"]] * 284
+        "values": [["2026-05-27"] * 284]
     }
     with patch("sheets.build_service", return_value=mock_service):
         row = get_last_sim_row()

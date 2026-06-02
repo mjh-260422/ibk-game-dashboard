@@ -32,7 +32,7 @@ def get_last_sim_row() -> int:
         range=f"'{SIM_SHEET}'!A:A",
         majorDimension="COLUMNS",
     ).execute()
-    vals = result.get("values", [])
+    vals = result.get("values", [[]])[0]
     return len(vals)
 
 def _copy_format(service, sheet_id: int, src_start: int, src_end: int, dst_start: int, dst_end: int):
