@@ -13,7 +13,9 @@ def build_result_message(bid: BidInfo, write_result: dict) -> str:
     for p_result in write_result["products"]:
         name = p_result["name"]
         fee = p_result["supply_fee"]
-        product = next(p for p in bid.products if p.name == name)
+        product = next((p for p in bid.products if p.name == name), None)
+        if product is None:
+            raise ValueError(f"write_result에 있는 상품명이 BidInfo에 없음: {name}")
 
         pg_rate = round(1 - (1 - product.discount_rate / 100) * 0.975, 6) * 100
         shipping_note = "PIN 전달 (발송비 없음)" if bid.is_pin_delivery else f"발송비 {product.quantity * 50:,}원"
