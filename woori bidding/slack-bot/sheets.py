@@ -7,6 +7,9 @@ from image_parser import BidInfo
 SIM_SHEET = "4"
 HISTORY_SHEET = "입찰 히스토리"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+BLOCK_HEADER_ROWS = 4   # date + title + section-header + col-header
+BLOCK_FOOTER_ROWS = 1   # 합계
+SRC_ROW_OFFSET = 7      # 직전 블록 크기 (1개 품목 기준)
 
 DEFAULT_FEES = {
     "스타벅스": 4.60,
@@ -25,17 +28,17 @@ def get_supply_fee(product_name: str) -> float | None:
             return fee
     return None
 
-def get_last_sim_row() -> int:
-    service = build_service()
-    result = service.spreadsheets().values().get(
+def get_last_sim_row(service=None) -> int:
+    svc = service or build_service()
+    result = svc.spreadsheets().values().get(
         spreadsheetId=SIMULATION_SPREADSHEET_ID,
-        range=f"'{SIM_SHEET}'!A:A",
+        range=f"'{SIM_SHEET}'!B:B",
         majorDimension="COLUMNS",
     ).execute()
     vals = result.get("values", [[]])[0]
     return len(vals)
 
-def _copy_format(service, sheet_id: int, src_start: int, src_end: int, dst_start: int, dst_end: int):
+def _copy_format(service, sheet_id: int, src_start: int, src_end: int, dst_start: int, dst_end: int) -> None:
     service.spreadsheets().batchUpdate(
         spreadsheetId=SIMULATION_SPREADSHEET_ID,
         body={"requests": [{
@@ -54,23 +57,27 @@ def write_sim_block(bid: BidInfo, date: str | None = None) -> dict:
     반환값: {"start_row": int, "products": [{"name", "supply_fee", "missing_fee": bool}]}
     """
     service = build_service()
-    meta = service.spreadsheets().get(spreadsheetId=SIMULATION_SPREADSHEET_ID).execute()
-    sheet_id = next(s["properties"]["sheetId"] for s in meta["sheets"] if s["properties"]["title"] == SIM_SHEET)
 
-    last_row = get_last_sim_row()
+    meta = service.spreadsheets().get(spreadsheetId=SIMULATION_SPREADSHEET_ID).execute()
+    sheet_id = next(
+        (s["properties"]["sheetId"] for s in meta["sheets"] if s["properties"]["title"] == SIM_SHEET),
+        None,
+    )
+    if sheet_id is None:
+        raise ValueError(f"시뮬레이션 시트 탭 '{SIM_SHEET}'을 찾을 수 없습니다.")
+
+    last_row = get_last_sim_row(service)
     start_row = last_row + 1
     write_date = date or datetime.date.today().strftime("%Y-%m-%d")
     n_products = len(bid.products)
-    block_rows = 4 + n_products + 1  # date + title + section-header + col-header + products + 합계
+    block_rows = BLOCK_HEADER_ROWS + n_products + BLOCK_FOOTER_ROWS
 
-    # 서식 복사 (직전 블록 → 새 블록)
-    src_0 = last_row - 7  # 0-indexed
+    src_0 = last_row - SRC_ROW_OFFSET  # 0-indexed 직전 블록 시작
     src_1 = last_row
     dst_0 = last_row
     dst_1 = last_row + block_rows
     _copy_format(service, sheet_id, src_0, src_1, dst_0, dst_1)
 
-    # 데이터 행 구성
     title = f"\t'{bid.event_name}_{bid.manager}_{bid.bid_number}"
     rows = [
         ["", write_date],
@@ -85,23 +92,21 @@ def write_sim_block(bid: BidInfo, date: str | None = None) -> dict:
     for p in bid.products:
         fee = get_supply_fee(p.name)
         shipping = " - " if bid.is_pin_delivery else p.quantity * 50
-        row = [
+        rows.append([
             "",
             f" {p.name}",
             p.face_value,
             f"{fee:.2f}%" if fee is not None else "",
             p.quantity,
-            "",  # F: 수식
+            "",           # F: 거래금액 수식 (기존 서식 복사로 적용)
             shipping,
-            p.discount_rate / 100,  # H: 액면가 할인율 (소수)
-            "",  # I: 수식
-        ]
-        rows.append(row)
+            p.discount_rate / 100,
+            "",           # I: PG포함 할인율 수식
+        ])
         product_results.append({"name": p.name, "supply_fee": fee, "missing_fee": fee is None})
 
     rows.append(["", "합계"])
 
-    # 값 기록
     service.spreadsheets().values().update(
         spreadsheetId=SIMULATION_SPREADSHEET_ID,
         range=f"'{SIM_SHEET}'!A{start_row}",
@@ -109,14 +114,13 @@ def write_sim_block(bid: BidInfo, date: str | None = None) -> dict:
         body={"values": rows},
     ).execute()
 
-    # I열 수식 (PG포함 할인율) 적용
-    formula_data = []
-    for i in range(n_products):
-        product_row = start_row + 4 + i
-        formula_data.append({
-            "range": f"'{SIM_SHEET}'!I{product_row}",
-            "values": [[f"=1-(1-H{product_row})*0.975"]],
-        })
+    formula_data = [
+        {
+            "range": f"'{SIM_SHEET}'!I{start_row + BLOCK_HEADER_ROWS + i}",
+            "values": [[f"=1-(1-H{start_row + BLOCK_HEADER_ROWS + i})*0.975"]],
+        }
+        for i in range(n_products)
+    ]
     if formula_data:
         service.spreadsheets().values().batchUpdate(
             spreadsheetId=SIMULATION_SPREADSHEET_ID,
