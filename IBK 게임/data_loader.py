@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -13,7 +14,12 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 
 def _get_service():
-    creds = Credentials.from_service_account_file(KEY_FILE, scopes=SCOPES)
+    try:
+        import streamlit as st
+        info = dict(st.secrets["gcp_service_account"])
+        creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+    except Exception:
+        creds = Credentials.from_service_account_file(KEY_FILE, scopes=SCOPES)
     return build('sheets', 'v4', credentials=creds)
 
 
