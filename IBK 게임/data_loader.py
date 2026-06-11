@@ -185,6 +185,7 @@ def load_monthly_coupon(service=None):
 
 
 def load_all(service=None):
+    from datetime import datetime
     if service is None:
         service = _get_service()
     prize_df  = load_prize_df(service)
@@ -192,4 +193,5 @@ def load_all(service=None):
     monthly_p = load_monthly_prize(service)
     monthly_c = load_monthly_coupon(service)
     months    = sorted(set(list(monthly_p.keys()) + list(monthly_c.keys())))
-    return prize_df, coupon_df, monthly_p, monthly_c, months
+    loaded_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    return prize_df, coupon_df, monthly_p, monthly_c, months, loaded_at

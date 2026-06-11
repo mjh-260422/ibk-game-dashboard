@@ -48,6 +48,42 @@ def _fmt(df):
         elif c in PCT_COLS: fmt[c] = "{:.1f}%"
     return df.style.format(fmt, na_rep="-")
 
+def _fmt_highlight(df, rate_col, threshold=1.5):
+    """rate_col 기준으로 평균 ± threshold*σ 벗어난 행 색상 강조"""
+    rates = pd.to_numeric(df[rate_col], errors='coerce').dropna()
+    fmt = {}
+    for c in df.columns:
+        if c in INT_COLS:   fmt[c] = "{:,.0f}"
+        elif c in PCT_COLS: fmt[c] = "{:.1f}%"
+    styler = df.style.format(fmt, na_rep="-")
+    if len(rates) < 2:
+        return styler
+    mean_r = rates.mean()
+    std_r  = rates.std()
+    if std_r == 0:
+        return styler
+
+    def highlight_row(row):
+        val = pd.to_numeric(row.get(rate_col, None), errors='coerce')
+        if pd.isna(val):
+            return [''] * len(row)
+        if val > mean_r + threshold * std_r:
+            return ['background-color: #fecaca'] * len(row)
+        if val < mean_r - threshold * std_r:
+            return ['background-color: #fef9c3'] * len(row)
+        return [''] * len(row)
+
+    return styler.apply(highlight_row, axis=1)
+
+def _anomaly_comment(val, mean_r, std_r, threshold=1.5):
+    if pd.isna(val) or std_r == 0:
+        return ""
+    if val > mean_r + threshold * std_r:
+        return "⚠ 확률 조정 필요 (높음)"
+    if val < mean_r - threshold * std_r:
+        return "⚠ 확인 필요 (낮음)"
+    return ""
+
 def _상품표시(공급사, 상품명, 면가):
     s = str(공급사).strip() if 공급사 else ""
     n = str(상품명).strip()
@@ -89,7 +125,7 @@ def get_data():
 
 with st.spinner("Google Sheets에서 데이터 불러오는 중..."):
     try:
-        prize_df, coupon_df, monthly_p, monthly_c, months = get_data()
+        prize_df, coupon_df, monthly_p, monthly_c, months, loaded_at = get_data()
         data_ok = True
     except Exception as e:
         st.error(f"데이터 로드 실패: {e}")
@@ -97,10 +133,12 @@ with st.spinner("Google Sheets에서 데이터 불러오는 중..."):
         prize_df = coupon_df = pd.DataFrame()
         monthly_p = monthly_c = {}
         months = []
+        loaded_at = "-"
 
 # ── 사이드바 ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 🎮 IBK 게임")
+    st.caption(f"업데이트: {loaded_at}")
     st.divider()
 
     page = st.radio(
@@ -137,14 +175,13 @@ else:
 # ══════════════════════════════════════════════════════════════════════════════
 if page == "📊 종합":
     st.title("📊 종합")
-    st.caption(f"기준: {sel_month}")
+    st.caption(f"기준: {sel_month}  ·  데이터 업데이트: {loaded_at}")
     st.divider()
 
     if cur_prize.empty and cur_coupon.empty:
         st.info("해당 월 데이터 없음")
         st.stop()
 
-    # 시트 수식 결과값 직접 합산 (재계산 없음)
     tot_정산  = int(cur_prize["정산금액"].sum()  if not cur_prize.empty  else 0) \
               + int(cur_coupon["정산금액"].sum() if not cur_coupon.empty else 0)
     tot_수익  = int(cur_prize["최종수익"].sum()  if not cur_prize.empty  else 0) \
@@ -155,11 +192,12 @@ if page == "📊 종합":
                + int((cur_coupon["발행수"] * cur_coupon["면가"]).sum() if not cur_coupon.empty else 0)
     tot_수익률 = tot_수익 / tot_면가합 * 100 if tot_면가합 else 0
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("IBK 소진포인트 (정산)",  won(tot_정산))
-    c2.metric("경품 + 쿠폰 상품대금",   won(tot_상품))
-    c3.metric("최종수익",               won(tot_수익))
-    c4.metric("수익률(면가기준)",        f"{tot_수익률:.1f}%")
+    c2.metric("지급금액 합계 (액면가)", won(tot_면가합))
+    c3.metric("경품 + 쿠폰 상품대금",   won(tot_상품))
+    c4.metric("최종수익",               won(tot_수익))
+    c5.metric("수익률(면가기준)",        f"{tot_수익률:.1f}%")
 
     if sel_month == "전체" and months:
         st.divider()
@@ -178,10 +216,11 @@ if page == "📊 종합":
                    + int((mc["발행수"] * mc["면가"]).sum() if not mc.empty else 0)
             rows.append({
                 "월": mk,
-                "정산금액":       정산,
-                "상품대금":       상품,
-                "최종수익":       수익,
-                "수익률_면가(%)": round(수익 / 면가합 * 100, 1) if 면가합 else 0,
+                "정산금액":         정산,
+                "지급금액(액면가)":  면가합,
+                "상품대금":         상품,
+                "최종수익":         수익,
+                "수익률_면가(%)":   round(수익 / 면가합 * 100, 1) if 면가합 else 0,
             })
         st.dataframe(_fmt(pd.DataFrame(rows)), use_container_width=True, hide_index=True)
 
@@ -191,7 +230,7 @@ if page == "📊 종합":
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "🎁 경품":
     st.title("🎁 경품")
-    st.caption(f"기준: {sel_month}")
+    st.caption(f"기준: {sel_month}  ·  데이터 업데이트: {loaded_at}")
     st.divider()
 
     if cur_prize.empty:
@@ -219,12 +258,27 @@ elif page == "🎁 경품":
 
     st.divider()
     st.subheader("상품별 내역")
+
+    rates = df_p["교환율(%)"]
+    mean_r = rates.mean()
+    std_r  = rates.std() if len(rates) > 1 else 0
+
     df_p["상품"] = df_p.apply(
         lambda r: _상품표시(r.get("공급사명", ""), r["상품명"], r["면가"]), axis=1
     )
+    df_p["비고"] = df_p["교환율(%)"].apply(
+        lambda v: _anomaly_comment(v, mean_r, std_r)
+    )
+
     cols = ["게임명", "상품", "게임P", "발행수", "교환수", "만료수",
-            "교환율(%)", "미교환율(%)", "정산금액", "상품대금", "수수료금액", "최종수익", "수익률_면가(%)"]
-    st.dataframe(_fmt(df_p[cols]), use_container_width=True, hide_index=True)
+            "교환율(%)", "미교환율(%)", "정산금액", "상품대금", "수수료금액", "최종수익", "수익률_면가(%)", "비고"]
+
+    if std_r > 0:
+        st.caption(f"평균 교환율 {mean_r:.1f}%  ·  🔴 평균+1.5σ 초과  ·  🟡 평균-1.5σ 미만")
+    st.dataframe(
+        _fmt_highlight(df_p[cols], "교환율(%)"),
+        use_container_width=True, hide_index=True
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -232,7 +286,7 @@ elif page == "🎁 경품":
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "🎟 할인쿠폰":
     st.title("🎟 할인쿠폰")
-    st.caption(f"기준: {sel_month}")
+    st.caption(f"기준: {sel_month}  ·  데이터 업데이트: {loaded_at}")
     st.divider()
 
     if cur_coupon.empty:
@@ -260,13 +314,27 @@ elif page == "🎟 할인쿠폰":
 
     st.divider()
     st.subheader("쿠폰별 내역")
+
+    rates_c = df_c["사용율(%)"]
+    mean_c  = rates_c.mean()
+    std_c   = rates_c.std() if len(rates_c) > 1 else 0
+
     df_c["쿠폰"] = df_c.apply(
         lambda r: f"{r['쿠폰명']}  ({int(r['면가']):,}원)", axis=1
     )
-    cols = ["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수",
-            "사용율(%)", "미사용율(%)", "정산금액", "상품대금", "최종수익", "수익률_면가(%)"]
-    st.dataframe(_fmt(df_c[cols]), use_container_width=True, hide_index=True)
+    df_c["비고"] = df_c["사용율(%)"].apply(
+        lambda v: _anomaly_comment(v, mean_c, std_c)
+    )
 
+    cols = ["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수",
+            "사용율(%)", "미사용율(%)", "정산금액", "상품대금", "최종수익", "수익률_면가(%)", "비고"]
+
+    if std_c > 0:
+        st.caption(f"평균 사용율 {mean_c:.1f}%  ·  🔴 평균+1.5σ 초과  ·  🟡 평균-1.5σ 미만")
+    st.dataframe(
+        _fmt_highlight(df_c[cols], "사용율(%)"),
+        use_container_width=True, hide_index=True
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -280,6 +348,12 @@ elif page == "📐 시뮬레이션":
     sim_prize_df  = cur_prize.copy()  if not cur_prize.empty  else pd.DataFrame()
     sim_coupon_df = cur_coupon.copy() if not cur_coupon.empty else pd.DataFrame()
 
+    # session_state로 월 변경해도 조정값 유지
+    if "sim_prize_adj" not in st.session_state:
+        st.session_state.sim_prize_adj = {}
+    if "sim_coupon_adj" not in st.session_state:
+        st.session_state.sim_coupon_adj = {}
+
     def _fmt_int(v):
         try: return f"{int(v):,}"
         except: return v
@@ -289,7 +363,12 @@ elif page == "📐 시뮬레이션":
     if not sim_prize_df.empty:
         sim_p = sim_prize_df[["게임명", "공급사명", "상품명", "게임P", "면가", "발행수", "교환수", "만료수", "수수료율"]].copy()
         sim_p["현재 미교환율(%)"] = ((sim_p["발행수"] - sim_p["교환수"]) / sim_p["발행수"] * 100).round(1)
-        sim_p["예상 미교환율(%)"] = sim_p["현재 미교환율(%)"]
+
+        # session_state에 저장된 값 우선 사용
+        def _get_prize_adj(row):
+            key = (row["게임명"], row["상품명"])
+            return st.session_state.sim_prize_adj.get(key, row["현재 미교환율(%)"])
+        sim_p["예상 미교환율(%)"] = sim_p.apply(_get_prize_adj, axis=1)
 
         disp_p = sim_p.copy()
         disp_p["상품"] = disp_p.apply(
@@ -312,6 +391,11 @@ elif page == "📐 시뮬레이션":
             },
             key="sim_prize_editor",
         )
+        # 편집값 session_state 저장
+        for i, erow in edited_p.iterrows():
+            key = (sim_p.at[i, "게임명"], sim_p.at[i, "상품명"])
+            st.session_state.sim_prize_adj[key] = erow["예상 미교환율(%)"]
+
         calc_p = sim_p.copy()
         calc_p["예상 미교환율(%)"] = edited_p["예상 미교환율(%)"]
         prize_calc = calc_p.join(calc_p.apply(calc_prize_row, axis=1))
@@ -321,7 +405,11 @@ elif page == "📐 시뮬레이션":
     if not sim_coupon_df.empty:
         sim_c = sim_coupon_df[["게임명", "쿠폰명", "게임P", "면가", "발행수", "사용수", "만료수"]].copy()
         sim_c["현재 미사용율(%)"] = ((sim_c["발행수"] - sim_c["사용수"]) / sim_c["발행수"] * 100).round(1)
-        sim_c["예상 미사용율(%)"] = sim_c["현재 미사용율(%)"]
+
+        def _get_coupon_adj(row):
+            key = (row["게임명"], row["쿠폰명"])
+            return st.session_state.sim_coupon_adj.get(key, row["현재 미사용율(%)"])
+        sim_c["예상 미사용율(%)"] = sim_c.apply(_get_coupon_adj, axis=1)
 
         disp_c = sim_c.copy()
         disp_c["쿠폰"] = disp_c.apply(
@@ -344,6 +432,10 @@ elif page == "📐 시뮬레이션":
             },
             key="sim_coupon_editor",
         )
+        for i, erow in edited_c.iterrows():
+            key = (sim_c.at[i, "게임명"], sim_c.at[i, "쿠폰명"])
+            st.session_state.sim_coupon_adj[key] = erow["예상 미사용율(%)"]
+
         calc_c = sim_c.copy()
         calc_c["예상 미사용율(%)"] = edited_c["예상 미사용율(%)"]
         coupon_calc = calc_c.join(calc_c.apply(calc_coupon_row, axis=1))
