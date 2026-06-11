@@ -43,3 +43,35 @@ IBK giftshop/
 *token*
 google-sheets-key.json
 service-account*.json
+
+# ───────────────────────────────────────────
+# IBK 게임 — 대외비/민감 파일
+# ───────────────────────────────────────────
+IBK 게임/*.pdf
+IBK 게임/*.hwp
+IBK 게임/*.docx
+IBK 게임/*.xlsx
+IBK 게임/*.xls
+IBK 게임/*.fig
+IBK 게임/*.zip
+IBK 게임/pdf_content.txt
+IBK 게임/로우데이터*/
+IBK 게임/0529 데이터/
+IBK 게임/운영현황/
+IBK 게임/카카오톡 기록/
+IBK 게임/imgs*/
+IBK 게임/thumb*/
+IBK 게임/레이아웃*/
+IBK 게임/v014/
+IBK 게임/__pycache__/
+# 임시 유틸 스크립트 (대외비 내부 구조 노출 방지)
+IBK 게임/fix_*.py
+IBK 게임/format_*.py
+IBK 게임/rebuild_*.py
+IBK 게임/reset_*.py
+IBK 게임/gen_external_*.py
+IBK 게임/generate_dashboard.py
+IBK 게임/monthly_revenue.py
+IBK 게임/create_*.py
+IBK 게임/수익률_간이산출기_2.html
+IBK 게임/*.gs
