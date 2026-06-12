@@ -395,6 +395,8 @@ elif page == "📐 시뮬레이션":
         )
 
     # ── 쿠폰 편집 테이블 ────────────────────────────────────────────────────────
+    edited_c_state = None
+    sim_c = pd.DataFrame()
     if not sim_coupon_df.empty:
         sim_c = sim_coupon_df[["게임명", "쿠폰명", "게임P", "면가", "발행수", "사용수", "만료수"]].copy()
         sim_c["현재 미사용율(%)"] = ((sim_c["발행수"] - sim_c["사용수"]) / sim_c["발행수"] * 100).round(1)
@@ -412,7 +414,7 @@ elif page == "📐 시뮬레이션":
             disp_c[c] = disp_c[c].apply(_fmt_int)
 
         st.subheader("🎟 할인쿠폰 — 미사용율 조정")
-        edited_c = st.data_editor(
+        edited_c_state = st.data_editor(
             disp_c[["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수", "현재 미사용율(%)", "예상 미사용율(%)"]],
             use_container_width=True,
             hide_index=True,
@@ -425,9 +427,6 @@ elif page == "📐 시뮬레이션":
             },
             key="sim_coupon_editor",
         )
-        for i, erow in edited_c.iterrows():
-            key = (sim_c.at[i, "게임명"], sim_c.at[i, "쿠폰명"])
-            st.session_state.sim_coupon_adj[key] = erow["예상 미사용율(%)"]
 
     # ── 계산 버튼 ───────────────────────────────────────────────────────────────
     st.divider()
@@ -440,11 +439,14 @@ elif page == "📐 시뮬레이션":
         st.rerun()
 
     if run_calc:
-        # 버튼 클릭 시 편집값 반영 후 계산
         if edited_p_state is not None:
             for i, erow in edited_p_state.iterrows():
                 key = (sim_p.at[i, "게임명"], sim_p.at[i, "상품명"])
                 st.session_state.sim_prize_adj[key] = erow["예상 미교환율(%)"]
+        if edited_c_state is not None and not sim_c.empty:
+            for i, erow in edited_c_state.iterrows():
+                key = (sim_c.at[i, "게임명"], sim_c.at[i, "쿠폰명"])
+                st.session_state.sim_coupon_adj[key] = erow["예상 미사용율(%)"]
         st.session_state.sim_result_ready = True
 
     # ── 예상 결과 요약 ──────────────────────────────────────────────────────────
