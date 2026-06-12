@@ -48,40 +48,67 @@ def _fmt(df):
         elif c in PCT_COLS: fmt[c] = "{:.1f}%"
     return df.style.format(fmt, na_rep="-")
 
-def _fmt_highlight(df, rate_col, threshold=1.5):
-    """rate_col 기준으로 평균 ± threshold*σ 벗어난 행 색상 강조"""
+def _fmt_highlight(df, rate_col, threshold=1.5, profit_col=None, profit_target=30):
+    """rate_col 기준 통계적 이상값 + profit_col 기준 목표 미달 행 색상 강조"""
     rates = pd.to_numeric(df[rate_col], errors='coerce').dropna()
     fmt = {}
     for c in df.columns:
         if c in INT_COLS:   fmt[c] = "{:,.0f}"
         elif c in PCT_COLS: fmt[c] = "{:.1f}%"
     styler = df.style.format(fmt, na_rep="-")
-    if len(rates) < 2:
-        return styler
-    mean_r = rates.mean()
-    std_r  = rates.std()
-    if std_r == 0:
-        return styler
+    mean_r = rates.mean() if len(rates) >= 2 else None
+    std_r  = rates.std()  if len(rates) >= 2 else None
+    has_stat = mean_r is not None and std_r is not None and std_r > 0
 
     def highlight_row(row):
-        val = pd.to_numeric(row.get(rate_col, None), errors='coerce')
-        if pd.isna(val):
-            return [''] * len(row)
-        if val > mean_r + threshold * std_r:
-            return ['background-color: #fecaca'] * len(row)
-        if val < mean_r - threshold * std_r:
-            return ['background-color: #fef9c3'] * len(row)
+        profit_low = False
+        if profit_col and profit_col in row.index:
+            p = pd.to_numeric(row.get(profit_col), errors='coerce')
+            profit_low = (not pd.isna(p)) and (p < profit_target)
+
+        anomaly_high = anomaly_low = False
+        if has_stat:
+            val = pd.to_numeric(row.get(rate_col, None), errors='coerce')
+            if not pd.isna(val):
+                anomaly_high = val > mean_r + threshold * std_r
+                anomaly_low  = val < mean_r - threshold * std_r
+
+        if profit_low and (anomaly_high or anomaly_low):
+            return ['background-color: #fca5a5'] * len(row)  # 진한 빨강: 이중 위협
+        if anomaly_high:
+            return ['background-color: #fecaca'] * len(row)  # 연빨강: 교환율 높음
+        if anomaly_low:
+            return ['background-color: #fef9c3'] * len(row)  # 노랑: 교환율 낮음
+        if profit_low:
+            return ['background-color: #fed7aa'] * len(row)  # 주황: 30% 미달
         return [''] * len(row)
 
     return styler.apply(highlight_row, axis=1)
+
+
+def _fmt_profit_only(df, profit_col="수익률_면가(%)", target=30):
+    """목표 수익률 미달 행만 주황 강조 (통계 강조 없는 테이블용)"""
+    fmt = {}
+    for c in df.columns:
+        if c in INT_COLS:   fmt[c] = "{:,.0f}"
+        elif c in PCT_COLS: fmt[c] = "{:.1f}%"
+    styler = df.style.format(fmt, na_rep="-")
+
+    def highlight(row):
+        p = pd.to_numeric(row.get(profit_col), errors='coerce')
+        if not pd.isna(p) and p < target:
+            return ['background-color: #fed7aa'] * len(row)
+        return [''] * len(row)
+
+    return styler.apply(highlight, axis=1)
 
 def _anomaly_comment(val, mean_r, std_r, threshold=1.5):
     if pd.isna(val) or std_r == 0:
         return ""
     if val > mean_r + threshold * std_r:
-        return "⚠ 확률 조정 필요 (높음)"
+        return "[!] 확률 조정 필요 (높음)"
     if val < mean_r - threshold * std_r:
-        return "⚠ 확인 필요 (낮음)"
+        return "[!] 확인 필요 (낮음)"
     return ""
 
 def _상품표시(공급사, 상품명, 면가):
@@ -222,7 +249,24 @@ if page == "📊 종합":
                 "최종수익":         수익,
                 "수익률_면가(%)":   round(수익 / 면가합 * 100, 1) if 면가합 else 0,
             })
-        st.dataframe(_fmt(pd.DataFrame(rows)), use_container_width=True, hide_index=True)
+        monthly_df = pd.DataFrame(rows)
+        st.dataframe(
+            _fmt_profit_only(monthly_df, profit_col="수익률_면가(%)", target=30),
+            use_container_width=True, hide_index=True,
+        )
+        below = [r for r in rows if r["수익률_면가(%)"] < 30]
+        above = [r for r in rows if r["수익률_면가(%)"] >= 30]
+        if below:
+            items_txt = "  /  ".join(
+                f"{r['월']} {r['수익률_면가(%)']:.1f}% (목표 대비 {r['수익률_면가(%)']-30:+.1f}%p)"
+                for r in below
+            )
+            st.warning(f"**[30% 목표 미달]** {items_txt}\n\n주황 강조 월의 교환율·발행량을 점검하세요.")
+        if above and not below:
+            st.success("**[30% 목표 분석]** 전체 월 목표 수익률(30%) 달성 중")
+        elif above and below:
+            ok_txt = ", ".join(r["월"] for r in above)
+            st.info(f"**[30% 목표 달성 월]** {ok_txt}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -266,19 +310,43 @@ elif page == "🎁 경품":
     df_p["상품"] = df_p.apply(
         lambda r: _상품표시(r.get("공급사명", ""), r["상품명"], r["면가"]), axis=1
     )
-    df_p["비고"] = df_p["교환율(%)"].apply(
-        lambda v: _anomaly_comment(v, mean_r, std_r)
-    )
+    def _prize_note(row):
+        parts = []
+        a = _anomaly_comment(row["교환율(%)"], mean_r, std_r)
+        if a:
+            parts.append(a)
+        if row["수익률_면가(%)"] < 30:
+            parts.append(f"수익률 {row['수익률_면가(%)']:.1f}% (30% 미달)")
+        return "  /  ".join(parts)
+
+    df_p["비고"] = df_p.apply(_prize_note, axis=1)
 
     cols = ["게임명", "상품", "게임P", "발행수", "교환수", "만료수",
             "교환율(%)", "미교환율(%)", "정산금액", "상품대금", "수수료금액", "최종수익", "수익률_면가(%)", "비고"]
 
+    legend = []
     if std_r > 0:
-        st.caption(f"평균 교환율 {mean_r:.1f}%  ·  🔴 평균+1.5σ 초과  ·  🟡 평균-1.5σ 미만")
+        legend.append(f"평균 교환율 {mean_r:.1f}%  ·  빨강=평균+1.5SD 초과  ·  노랑=평균-1.5SD 미만")
+    legend.append("주황=수익률 30% 미달  ·  진한빨강=이중 위협")
+    st.caption("  |  ".join(legend))
     st.dataframe(
-        _fmt_highlight(df_p[cols], "교환율(%)"),
-        use_container_width=True, hide_index=True
+        _fmt_highlight(df_p[cols], "교환율(%)", profit_col="수익률_면가(%)"),
+        use_container_width=True, hide_index=True,
     )
+
+    p_below30 = df_p[df_p["수익률_면가(%)"] < 30]
+    if not p_below30.empty:
+        items_txt = "  /  ".join(
+            f"{r['상품명']} ({r['수익률_면가(%)']:.1f}%)"
+            for _, r in p_below30.iterrows()
+        )
+        st.warning(
+            f"**[30% 목표 미달 {len(p_below30)}개 상품]** {items_txt}\n\n"
+            f"해당 상품의 교환율이 높거나 게임P 대비 면가가 커서 수익률이 낮습니다. "
+            f"발행량 조절 또는 확률 재설계가 필요합니다."
+        )
+    else:
+        st.success(f"**[30% 목표 분석]** 전체 경품 상품 목표 수익률(30%) 달성 중  ·  수익률 최저: {df_p['수익률_면가(%)'].min():.1f}%")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -322,19 +390,43 @@ elif page == "🎟 할인쿠폰":
     df_c["쿠폰"] = df_c.apply(
         lambda r: f"{r['쿠폰명']}  ({int(r['면가']):,}원)", axis=1
     )
-    df_c["비고"] = df_c["사용율(%)"].apply(
-        lambda v: _anomaly_comment(v, mean_c, std_c)
-    )
+    def _coupon_note(row):
+        parts = []
+        a = _anomaly_comment(row["사용율(%)"], mean_c, std_c)
+        if a:
+            parts.append(a)
+        if row["수익률_면가(%)"] < 30:
+            parts.append(f"수익률 {row['수익률_면가(%)']:.1f}% (30% 미달)")
+        return "  /  ".join(parts)
+
+    df_c["비고"] = df_c.apply(_coupon_note, axis=1)
 
     cols = ["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수",
             "사용율(%)", "미사용율(%)", "정산금액", "상품대금", "최종수익", "수익률_면가(%)", "비고"]
 
+    legend_c = []
     if std_c > 0:
-        st.caption(f"평균 사용율 {mean_c:.1f}%  ·  🔴 평균+1.5σ 초과  ·  🟡 평균-1.5σ 미만")
+        legend_c.append(f"평균 사용율 {mean_c:.1f}%  ·  빨강=평균+1.5SD 초과  ·  노랑=평균-1.5SD 미만")
+    legend_c.append("주황=수익률 30% 미달  ·  진한빨강=이중 위협")
+    st.caption("  |  ".join(legend_c))
     st.dataframe(
-        _fmt_highlight(df_c[cols], "사용율(%)"),
-        use_container_width=True, hide_index=True
+        _fmt_highlight(df_c[cols], "사용율(%)", profit_col="수익률_면가(%)"),
+        use_container_width=True, hide_index=True,
     )
+
+    c_below30 = df_c[df_c["수익률_면가(%)"] < 30]
+    if not c_below30.empty:
+        items_txt = "  /  ".join(
+            f"{r['쿠폰명']} ({r['수익률_면가(%)']:.1f}%)"
+            for _, r in c_below30.iterrows()
+        )
+        st.warning(
+            f"**[30% 목표 미달 {len(c_below30)}개 쿠폰]** {items_txt}\n\n"
+            f"해당 쿠폰의 사용율이 높아 상품대금이 정산금액에 근접합니다. "
+            f"발행량 또는 쿠폰 면가 조정이 필요합니다."
+        )
+    else:
+        st.success(f"**[30% 목표 분석]** 전체 할인쿠폰 목표 수익률(30%) 달성 중  ·  수익률 최저: {df_c['수익률_면가(%)'].min():.1f}%")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
