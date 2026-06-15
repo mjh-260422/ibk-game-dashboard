@@ -200,6 +200,21 @@ def load_monthly_coupon(service=None):
     return {mk: pd.DataFrame(v) for mk, v in monthly.items() if v}
 
 
+def _last_data_date(last_month_str):
+    """'2026.06' → '2026-06-15'(오늘이 해당 월) or '2026-06-30'(지난 월)"""
+    import calendar
+    from datetime import date
+    try:
+        y, m = (int(x) for x in last_month_str.split('.'))
+        today = date.today()
+        if today.year == y and today.month == m:
+            return today.strftime("%Y-%m-%d")
+        last_day = calendar.monthrange(y, m)[1]
+        return f"{y:04d}-{m:02d}-{last_day:02d}"
+    except Exception:
+        return last_month_str
+
+
 def load_all(service=None):
     if service is None:
         service = _get_service()
@@ -208,5 +223,5 @@ def load_all(service=None):
     monthly_p = load_monthly_prize(service)
     monthly_c = load_monthly_coupon(service)
     months    = sorted(set(list(monthly_p.keys()) + list(monthly_c.keys())))
-    data_date = months[-1] if months else "-"
+    data_date = _last_data_date(months[-1]) if months else "-"
     return prize_df, coupon_df, monthly_p, monthly_c, months, data_date
