@@ -697,14 +697,14 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
            '총발행수량', '사용/교환수', '만료수',
            '교환(사용완료)', '만료금액', '미사용 금액', '총액면가 합계',
            '교환율', '미교환율',
-           '상품대금', '공급수수료금액', '매체사정산대금', '최종수익',
-           '수익률(정산기준)', '수익률(면가기준)']
+           '교환금액', '공급수수료금액', '매체사정산대금(게임P)', '잠재수익',
+           '잠재수익률(%)', '수익률(면가기준)', '확정수익', '확정수익률(%)']
     COUPON_HDR = ['게임명', '공급사명', '상품명', '게임P', '면가', '공급수수료율(vat제외)',
                   '총발행수량', '사용/교환수', '만료수',
                   '교환(사용완료)', '만료금액', '미사용 금액', '총액면가 합계',
                   '교환율', '미교환율',
-                  '상품대금', '공급수수료금액', '매체사정산대금', '최종수익',
-                  '수익률(정산기준)', '수익률(면가기준)']
+                  '교환금액', '공급수수료금액', '매체사정산대금(게임P)', '잠재수익',
+                  '잠재수익률(%)', '수익률(면가기준)', '확정수익', '확정수익률(%)']
 
     ss_meta = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
     existing_sheets = {s['properties']['title']: s['properties']['sheetId'] for s in ss_meta.get('sheets', [])}
@@ -718,11 +718,11 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
     C_WHITE      = {'red': 1.0,   'green': 1.0,   'blue': 1.0}
     C_BORDER     = {'red': 0.800, 'green': 0.820, 'blue': 0.843}   # #CCDAD7
 
-    NUM_COLS = 21
-    # T=수익률(정산기준), U=수익률(면가기준)
-    PCT_COLS = [5, 13, 14, 19, 20]      # F(수수료율), N(교환율), O(미교환율), T, U
-    NUM_COLS_IDX = [3, 4, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18]  # D,E,G~M,P~S
-    COL_WIDTHS = [120, 90, 160, 60, 70, 90, 65, 70, 65, 95, 80, 105, 85, 70, 70, 90, 90, 100, 85, 80, 80]
+    NUM_COLS = 23
+    # T=잠재수익률(%), U=수익률(면가기준), V=확정수익, W=확정수익률(%)
+    PCT_COLS = [5, 13, 14, 19, 20, 22]  # F(수수료율), N(교환율), O(미교환율), T, U, W
+    NUM_COLS_IDX = [3, 4, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 21]  # D,E,G~M,P~S,V
+    COL_WIDTHS = [120, 90, 160, 60, 70, 90, 65, 70, 65, 95, 80, 105, 85, 70, 70, 90, 90, 100, 85, 85, 80, 90, 85]
 
     def col_letter(idx): return chr(ord('A') + idx) if idx < 26 else 'A' + chr(ord('A') + idx - 26)
 
@@ -755,7 +755,8 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
                             f'=H{r}*E{r}', f'=I{r}*E{r}', f'=(G{r}-H{r}-I{r})*E{r}', f'=J{r}+K{r}+L{r}',
                             f'=IFERROR(J{r}/M{r},"")', f'=IFERROR(1-N{r},"")',
                             f'=H{r}*E{r}', f'=H{r}*E{r}*F{r}', f'=G{r}*D{r}',
-                            f'=R{r}-P{r}+Q{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")'
+                            f'=R{r}-P{r}+Q{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")',
+                            f'=R{r}-(G{r}-I{r})*E{r}+Q{r}', f'=IFERROR(V{r}/R{r},"")'
                         ]); row_meta.append('data'); r += 1
 
             if tab_type in ('할인쿠폰', '종합'):
@@ -770,7 +771,8 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
                         f'=H{r}*E{r}', f'=I{r}*E{r}', f'=(G{r}-H{r}-I{r})*E{r}', f'=J{r}+K{r}+L{r}',
                         f'=IFERROR(J{r}/M{r},"")', f'=IFERROR(1-N{r},"")',
                         f'=H{r}*E{r}', 0, f'=G{r}*D{r}',
-                        f'=R{r}-P{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")'
+                        f'=R{r}-P{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")',
+                        f'=R{r}-(G{r}-I{r})*E{r}', f'=IFERROR(V{r}/R{r},"")'
                     ]); row_meta.append('data'); r += 1
 
             data_end = r - 1
@@ -785,9 +787,11 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
                     f'=SUM(P{data_start}:P{data_end})', f'=SUM(Q{data_start}:Q{data_end})', f'=SUM(R{data_start}:R{data_end})',
                     f'=SUM(S{data_start}:S{data_end})',
                     f'=IFERROR(SUM(S{data_start}:S{data_end})/SUM(R{data_start}:R{data_end}),"")',
-                    f'=IFERROR(SUM(S{data_start}:S{data_end})/SUM(M{data_start}:M{data_end}),"")'
+                    f'=IFERROR(SUM(S{data_start}:S{data_end})/SUM(M{data_start}:M{data_end}),"")',
+                    f'=SUM(V{data_start}:V{data_end})',
+                    f'=IFERROR(SUM(V{data_start}:V{data_end})/SUM(R{data_start}:R{data_end}),"")'
                 ]); row_meta.append('summary'); r += 1
-            rows.append(['']*21); row_meta.append('empty'); r += 1
+            rows.append(['']*23); row_meta.append('empty'); r += 1
 
         # 전체 기간 합계 섹션 (상품별 세부 + 총합계)
         if month_data_ranges:
@@ -809,7 +813,8 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
                         f'=H{r}*E{r}', f'=I{r}*E{r}', f'=(G{r}-H{r}-I{r})*E{r}', f'=J{r}+K{r}+L{r}',
                         f'=IFERROR(J{r}/M{r},"")', f'=IFERROR(1-N{r},"")',
                         f'=H{r}*E{r}', f'=H{r}*E{r}*F{r}', f'=G{r}*D{r}',
-                        f'=R{r}-P{r}+Q{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")'
+                        f'=R{r}-P{r}+Q{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")',
+                        f'=R{r}-(G{r}-I{r})*E{r}+Q{r}', f'=IFERROR(V{r}/R{r},"")'
                     ]); row_meta.append('grand_data'); r += 1
 
             if tab_type in ('할인쿠폰', '종합'):
@@ -824,7 +829,8 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
                         f'=H{r}*E{r}', f'=I{r}*E{r}', f'=(G{r}-H{r}-I{r})*E{r}', f'=J{r}+K{r}+L{r}',
                         f'=IFERROR(J{r}/M{r},"")', f'=IFERROR(1-N{r},"")',
                         f'=H{r}*E{r}', 0, f'=G{r}*D{r}',
-                        f'=R{r}-P{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")'
+                        f'=R{r}-P{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")',
+                        f'=R{r}-(G{r}-I{r})*E{r}', f'=IFERROR(V{r}/R{r},"")'
                     ]); row_meta.append('grand_data'); r += 1
 
             grand_detail_end = r - 1
@@ -838,7 +844,9 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
                 f'={multi_sum("P")}', f'={multi_sum("Q")}', f'={multi_sum("R")}',
                 f'={multi_sum("S")}',
                 f'=IFERROR(({multi_sum("S")})/({multi_sum("R")}),"")',
-                f'=IFERROR(({multi_sum("S")})/({multi_sum("M")}),"")'
+                f'=IFERROR(({multi_sum("S")})/({multi_sum("M")}),"")',
+                f'={multi_sum("V")}',
+                f'=IFERROR(({multi_sum("V")})/({multi_sum("R")}),"")'
             ]); row_meta.append('grand_summary'); r += 1
 
         # 시트 삭제 후 재생성 → 새 sheetId 획득
@@ -942,11 +950,12 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
             12: '총합계\n= 교환금액 + 만료금액 + 잔여금액\n= 총 발행수 × 면가',
             13: '교환율\n= 교환금액 합계 ÷ 총발행금액 합계\n= 교환수 ÷ 발행수',
             14: '미교환율\n= 1 - 교환율\n(만료 + 잔여 수량 포함)',
-            15: '상품대금\n= 사용/교환수 × 면가 합계',
+            15: '교환금액\n= 사용/교환수 × 면가 합계',
             16: '공급수수료금액 (vat포함)\n= 사용수 × 면가 × 공급수수료율 합계',
-            17: '매체사정산대금 (IBK 청구금액)\n= 발행수 × 게임P 합계',
-            18: '최종수익\n경품: 매체사정산 - 상품대금 + 공급수수료\n할인쿠폰: 매체사정산 - 상품대금',
-            19: '수익률\n= 최종수익 ÷ 매체사정산대금',
+            17: '매체사정산대금(게임P) (IBK 청구금액)\n= 발행수 × 게임P 합계',
+            18: '잠재수익\n경품: 매체사정산 - 교환금액 + 공급수수료\n할인쿠폰: 매체사정산 - 교환금액',
+            19: '수익률\n= 잠재수익 ÷ 매체사정산대금',
+            21: '확정수익\n경품: 매체사정산 - (발행수-만료수)×면가 + 공급수수료\n할인쿠폰: 매체사정산 - (발행수-만료수)×면가',
         }
         gs_idx = next((i for i, mt in enumerate(row_meta) if mt == 'grand_summary'), None)
         if gs_idx is not None:
@@ -1008,7 +1017,8 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
             f'=H{r}*E{r}', f'=I{r}*E{r}', f'=(G{r}-H{r}-I{r})*E{r}', f'=J{r}+K{r}+L{r}',
             f'=IFERROR(J{r}/M{r},"")', f'=IFERROR(1-N{r},"")',
             f'=H{r}*E{r}', f'=H{r}*E{r}*F{r}', f'=G{r}*D{r}',
-            f'=R{r}-P{r}+Q{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")'
+            f'=R{r}-P{r}+Q{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")',
+            f'=R{r}-(G{r}-I{r})*E{r}+Q{r}', f'=IFERROR(V{r}/R{r},"")'
         ]); exp_meta.append('grand_data'); r += 1
 
     # 할인쿠폰 예상
@@ -1026,7 +1036,8 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
             f'=H{r}*E{r}', f'=I{r}*E{r}', f'=(G{r}-H{r}-I{r})*E{r}', f'=J{r}+K{r}+L{r}',
             f'=IFERROR(J{r}/M{r},"")', f'=IFERROR(1-N{r},"")',
             f'=H{r}*E{r}', 0, f'=G{r}*D{r}',
-            f'=R{r}-P{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")'
+            f'=R{r}-P{r}', f'=IFERROR(S{r}/R{r},"")', f'=IFERROR(S{r}/M{r},"")',
+            f'=R{r}-(G{r}-I{r})*E{r}', f'=IFERROR(V{r}/R{r},"")'
         ]); exp_meta.append('grand_data'); r += 1
 
     data_end_exp = r - 1
@@ -1046,7 +1057,9 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
         f'=SUM(R{data_start_exp}:R{data_end_exp})',
         f'=SUM(S{data_start_exp}:S{data_end_exp})',
         f'=IFERROR(SUM(S{data_start_exp}:S{data_end_exp})/SUM(R{data_start_exp}:R{data_end_exp}),"")',
-        f'=IFERROR(SUM(S{data_start_exp}:S{data_end_exp})/SUM(M{data_start_exp}:M{data_end_exp}),"")'
+        f'=IFERROR(SUM(S{data_start_exp}:S{data_end_exp})/SUM(M{data_start_exp}:M{data_end_exp}),"")',
+        f'=SUM(V{data_start_exp}:V{data_end_exp})',
+        f'=IFERROR(SUM(V{data_start_exp}:V{data_end_exp})/SUM(R{data_start_exp}:R{data_end_exp}),"")'
     ]); exp_meta.append('grand_summary'); r += 1
 
     # 시트 생성

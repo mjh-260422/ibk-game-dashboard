@@ -7,10 +7,10 @@ SPREADSHEET_ID = '1G2A_FyERvQOVQBUsu9AHx7FPrE-UAIX4Ohl9UNtalzY'
 KEY_FILE = r'C:\Users\jihye\.claude\google-sheets-key.json'
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
-# 시트 컬럼 인덱스 (0-based, 할인율 제거 후 20컬럼 기준)
+# 시트 컬럼 인덱스 (0-based)
 # A=게임명 B=공급사명 C=상품명 D=게임P E=면가 F=수수료율
 # G=발행수 H=교환수 I=만료수 J~M=금액집계 N=교환율 O=미교환율
-# P=상품대금 Q=수수료금액 R=정산금액 S=최종수익 T=수익률
+# P=교환금액 Q=수수료금액 R=매체사정산대금(게임P) S=잠재수익 T=수익률(정산기준) U=수익률(면가기준) V=확정수익
 
 
 def _get_service():
@@ -88,6 +88,8 @@ def _prize_record(row):
         '정산금액':   정산금액,
         '확정수익':  확정수익,
         '잠재수익':  잠재수익,
+        '확정수익률(%)': round(확정수익 / 정산금액 * 100, 1) if 정산금액 else 0,
+        '잠재수익률(%)': round(잠재수익 / 정산금액 * 100, 1) if 정산금액 else 0,
         '수익률_면가(%)':  round(_safe_float(row[20]) * 100, 1) if len(row) > 20 else 0,
     }
 
@@ -114,6 +116,8 @@ def _coupon_record(row):
         '정산금액':  정산금액,
         '확정수익':  확정수익,
         '잠재수익':  잠재수익,
+        '확정수익률(%)': round(확정수익 / 정산금액 * 100, 1) if 정산금액 else 0,
+        '잠재수익률(%)': round(잠재수익 / 정산금액 * 100, 1) if 정산금액 else 0,
         '수익률_면가(%)': round(_safe_float(row[20]) * 100, 1) if len(row) > 20 else 0,
     }
 
@@ -135,7 +139,7 @@ def load_prize_df(service=None):
             records.append(_prize_record(row))
 
     cols = ['게임명','공급사명','상품명','게임P','면가','수수료율','발행수','교환수','만료수',
-            '교환금액','수수료금액','정산금액','확정수익','잠재수익','수익률_면가(%)']
+            '교환금액','수수료금액','정산금액','확정수익','잠재수익','확정수익률(%)','잠재수익률(%)','수익률_면가(%)']
     return pd.DataFrame(records) if records else pd.DataFrame(columns=cols)
 
 
@@ -156,7 +160,7 @@ def load_coupon_df(service=None):
             records.append(_coupon_record(row))
 
     cols = ['게임명','쿠폰명','게임P','면가','발행수','사용수','만료수',
-            '교환금액','수수료금액','정산금액','확정수익','잠재수익','수익률_면가(%)']
+            '교환금액','수수료금액','정산금액','확정수익','잠재수익','확정수익률(%)','잠재수익률(%)','수익률_면가(%)']
     return pd.DataFrame(records) if records else pd.DataFrame(columns=cols)
 
 

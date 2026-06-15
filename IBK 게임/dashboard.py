@@ -36,6 +36,7 @@ PCT_COLS = [
     "현재 미교환율(%)", "예상 미교환율(%)",
     "현재 미사용율(%)", "예상 미사용율(%)",
     "현재수익률(%)", "예상수익률(%)",
+    "확정수익률(%)", "잠재수익률(%)",
 ]
 
 def won(n):  return f"{int(n):,}원"
@@ -337,18 +338,33 @@ elif page == "🎁 경품":
         return "  /  ".join(parts)
 
     df_p["비고"] = df_p.apply(_prize_note, axis=1)
+    df_p["확정수익_disp"] = df_p.apply(
+        lambda r: f"{int(r['확정수익']):,}원  ({r['확정수익률(%)']:.1f}%)", axis=1
+    )
+    df_p["잠재수익_disp"] = df_p.apply(
+        lambda r: f"{int(r['잠재수익']):,}원  ({r['잠재수익률(%)']:.1f}%)", axis=1
+    )
 
     cols = ["게임명", "상품", "게임P", "발행수", "교환수", "만료수",
             "교환율(%)", "미교환율(%)", "정산금액", "교환금액", "수수료금액",
-            "확정수익", "잠재수익", "수익률_면가(%)", "비고"]
+            "확정수익_disp", "잠재수익_disp", "수익률_면가(%)", "비고"]
 
     legend = []
     if std_r > 0:
         legend.append(f"평균 교환율 {mean_r:.1f}%  ·  빨강=평균+1.5SD 초과  ·  노랑=평균-1.5SD 미만")
     legend.append("주황=수익률 30% 미달  ·  진한빨강=이중 위협")
+    legend.append("확정수익 = 정산금액 − (발행수−만료수)×면가 + 수수료  |  잠재수익 = 정산금액 − 교환금액 + 수수료")
     st.caption("  |  ".join(legend))
+    _sty_p = _fmt_highlight(df_p[cols], "교환율(%)", profit_col="수익률_면가(%)")
+    _sty_p = _sty_p.set_properties(
+        subset=["확정수익_disp", "잠재수익_disp"], **{"font-size": "16px"}
+    )
     st.dataframe(
-        _fmt_highlight(df_p[cols], "교환율(%)", profit_col="수익률_면가(%)"),
+        _sty_p,
+        column_config={
+            "확정수익_disp": st.column_config.TextColumn("확정수익", help="정산금액 − (발행수−만료수)×면가 + 수수료"),
+            "잠재수익_disp": st.column_config.TextColumn("잠재수익", help="정산금액 − 교환금액 + 수수료"),
+        },
         use_container_width=True, hide_index=True,
     )
 
@@ -421,18 +437,33 @@ elif page == "🎟 할인쿠폰":
         return "  /  ".join(parts)
 
     df_c["비고"] = df_c.apply(_coupon_note, axis=1)
+    df_c["확정수익_disp"] = df_c.apply(
+        lambda r: f"{int(r['확정수익']):,}원  ({r['확정수익률(%)']:.1f}%)", axis=1
+    )
+    df_c["잠재수익_disp"] = df_c.apply(
+        lambda r: f"{int(r['잠재수익']):,}원  ({r['잠재수익률(%)']:.1f}%)", axis=1
+    )
 
     cols = ["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수",
             "사용율(%)", "미사용율(%)", "정산금액", "교환금액",
-            "확정수익", "잠재수익", "수익률_면가(%)", "비고"]
+            "확정수익_disp", "잠재수익_disp", "수익률_면가(%)", "비고"]
 
     legend_c = []
     if std_c > 0:
         legend_c.append(f"평균 사용율 {mean_c:.1f}%  ·  빨강=평균+1.5SD 초과  ·  노랑=평균-1.5SD 미만")
     legend_c.append("주황=수익률 30% 미달  ·  진한빨강=이중 위협")
+    legend_c.append("확정수익 = 정산금액 − (발행수−만료수)×면가  |  잠재수익 = 정산금액 − 교환금액")
     st.caption("  |  ".join(legend_c))
+    _sty_c = _fmt_highlight(df_c[cols], "사용율(%)", profit_col="수익률_면가(%)")
+    _sty_c = _sty_c.set_properties(
+        subset=["확정수익_disp", "잠재수익_disp"], **{"font-size": "16px"}
+    )
     st.dataframe(
-        _fmt_highlight(df_c[cols], "사용율(%)", profit_col="수익률_면가(%)"),
+        _sty_c,
+        column_config={
+            "확정수익_disp": st.column_config.TextColumn("확정수익", help="정산금액 − (발행수−만료수)×면가"),
+            "잠재수익_disp": st.column_config.TextColumn("잠재수익", help="정산금액 − 교환금액"),
+        },
         use_container_width=True, hide_index=True,
     )
 
