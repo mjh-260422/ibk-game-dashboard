@@ -65,21 +65,29 @@ def _is_data_row(row):
 
 def _prize_record(row):
     """경품 데이터 행 → dict (시트 수식 결과값 직접 사용)"""
+    발행수     = _safe_int(row[6])
+    만료수     = _safe_int(row[8])
+    면가       = _safe_int(row[4])
+    교환금액   = _safe_int(row[15])
+    수수료금액 = _safe_int(row[16])
+    정산금액   = _safe_int(row[17])
+    잠재수익   = _safe_int(row[18])
+    확정수익   = 정산금액 - (발행수 - 만료수) * 면가 + 수수료금액
     return {
         '게임명':    str(row[0]).strip(),
         '공급사명':  str(row[1]).strip(),
         '상품명':    str(row[2]).strip(),
         '게임P':     _safe_int(row[3]),
-        '면가':      _safe_int(row[4]),
-        '수수료율':  round(_safe_float(row[5]) * 100, 2),   # 소수 → %
-        '발행수':    _safe_int(row[6]),
+        '면가':      면가,
+        '수수료율':  round(_safe_float(row[5]) * 100, 2),
+        '발행수':    발행수,
         '교환수':    _safe_int(row[7]),
-        '만료수':    _safe_int(row[8]),
-        # 시트 수식 결과 직접 읽기 (P/Q/R/S/T)
-        '상품대금':   _safe_int(row[15]),
-        '수수료금액': _safe_int(row[16]),
-        '정산금액':   _safe_int(row[17]),
-        '최종수익':        _safe_int(row[18]),
+        '만료수':    만료수,
+        '교환금액':  교환금액,
+        '수수료금액': 수수료금액,
+        '정산금액':   정산금액,
+        '확정수익':  확정수익,
+        '잠재수익':  잠재수익,
         '수익률_정산(%)':  round(_safe_float(row[19]) * 100, 1),
         '수익률_면가(%)':  round(_safe_float(row[20]) * 100, 1) if len(row) > 20 else 0,
     }
@@ -87,18 +95,26 @@ def _prize_record(row):
 
 def _coupon_record(row):
     """쿠폰 데이터 행 → dict (시트 수식 결과값 직접 사용)"""
+    발행수   = _safe_int(row[6])
+    만료수   = _safe_int(row[8])
+    면가     = _safe_int(row[4])
+    교환금액 = _safe_int(row[15])
+    정산금액 = _safe_int(row[17])
+    잠재수익 = _safe_int(row[18])
+    확정수익 = 정산금액 - (발행수 - 만료수) * 면가
     return {
         '게임명':   str(row[0]).strip(),
         '쿠폰명':   str(row[2]).strip(),
         '게임P':    _safe_int(row[3]),
-        '면가':     _safe_int(row[4]),
-        '발행수':   _safe_int(row[6]),
+        '면가':     면가,
+        '발행수':   발행수,
         '사용수':   _safe_int(row[7]),
-        '만료수':   _safe_int(row[8]),
-        '상품대금':       _safe_int(row[15]),
-        '수수료금액':     0,
-        '정산금액':       _safe_int(row[17]),
-        '최종수익':       _safe_int(row[18]),
+        '만료수':   만료수,
+        '교환금액':  교환금액,
+        '수수료금액': 0,
+        '정산금액':  정산금액,
+        '확정수익':  확정수익,
+        '잠재수익':  잠재수익,
         '수익률_정산(%)': round(_safe_float(row[19]) * 100, 1),
         '수익률_면가(%)': round(_safe_float(row[20]) * 100, 1) if len(row) > 20 else 0,
     }
@@ -121,7 +137,7 @@ def load_prize_df(service=None):
             records.append(_prize_record(row))
 
     cols = ['게임명','공급사명','상품명','게임P','면가','수수료율','발행수','교환수','만료수',
-            '상품대금','수수료금액','정산금액','최종수익','수익률_정산(%)','수익률_면가(%)']
+            '교환금액','수수료금액','정산금액','확정수익','잠재수익','수익률_정산(%)','수익률_면가(%)']
     return pd.DataFrame(records) if records else pd.DataFrame(columns=cols)
 
 
@@ -142,7 +158,7 @@ def load_coupon_df(service=None):
             records.append(_coupon_record(row))
 
     cols = ['게임명','쿠폰명','게임P','면가','발행수','사용수','만료수',
-            '상품대금','수수료금액','정산금액','최종수익','수익률_정산(%)','수익률_면가(%)']
+            '교환금액','수수료금액','정산금액','확정수익','잠재수익','수익률_정산(%)','수익률_면가(%)']
     return pd.DataFrame(records) if records else pd.DataFrame(columns=cols)
 
 
@@ -185,7 +201,6 @@ def load_monthly_coupon(service=None):
 
 
 def load_all(service=None):
-    from datetime import datetime
     if service is None:
         service = _get_service()
     prize_df  = load_prize_df(service)
@@ -193,5 +208,5 @@ def load_all(service=None):
     monthly_p = load_monthly_prize(service)
     monthly_c = load_monthly_coupon(service)
     months    = sorted(set(list(monthly_p.keys()) + list(monthly_c.keys())))
-    loaded_at = datetime.now().strftime("%Y-%m-%d %H:%M")
-    return prize_df, coupon_df, monthly_p, monthly_c, months, loaded_at
+    data_date = months[-1] if months else "-"
+    return prize_df, coupon_df, monthly_p, monthly_c, months, data_date

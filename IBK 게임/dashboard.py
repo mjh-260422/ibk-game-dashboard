@@ -25,9 +25,9 @@ div[data-testid="stRadio"] label:hover { background:#e2e8f0; }
 # ── 포맷 헬퍼 ──────────────────────────────────────────────────────────────────
 INT_COLS = [
     "게임P", "면가", "발행수", "교환수", "사용수", "만료수",
-    "정산금액", "상품대금", "수수료금액", "최종수익",
+    "정산금액", "교환금액", "수수료금액", "확정수익", "잠재수익",
     "예상 교환수", "예상 사용수", "예상 만료수",
-    "예상 정산", "예상 상품대금", "예상 수수료", "예상 수익",
+    "예상 정산", "예상 교환금액", "예상 수수료", "예상 수익",
     "경품비", "쿠폰비", "현재수익", "미교환수익", "예상수익",
 ]
 PCT_COLS = [
@@ -128,7 +128,7 @@ def calc_prize_row(row):
     수익      = 정산 - 상품대금 + 수수료
     return pd.Series({
         "예상 교환수": exp_ex, "예상 만료수": exp_xp,
-        "예상 정산": 정산, "예상 상품대금": 상품대금,
+        "예상 정산": 정산, "예상 교환금액": 상품대금,
         "예상 수수료": round(수수료), "예상 수익": round(수익),
     })
 
@@ -141,7 +141,7 @@ def calc_coupon_row(row):
     수익      = 정산 - 상품대금
     return pd.Series({
         "예상 사용수": exp_us, "예상 만료수": exp_xp,
-        "예상 정산": 정산, "예상 상품대금": 상품대금,
+        "예상 정산": 정산, "예상 교환금액": 상품대금,
         "예상 수익": round(수익),
     })
 
@@ -209,22 +209,33 @@ if page == "📊 종합":
         st.info("해당 월 데이터 없음")
         st.stop()
 
-    tot_정산  = int(cur_prize["정산금액"].sum()  if not cur_prize.empty  else 0) \
-              + int(cur_coupon["정산금액"].sum() if not cur_coupon.empty else 0)
-    tot_수익  = int(cur_prize["최종수익"].sum()  if not cur_prize.empty  else 0) \
-              + int(cur_coupon["최종수익"].sum() if not cur_coupon.empty else 0)
-    tot_상품  = int(cur_prize["상품대금"].sum()  if not cur_prize.empty  else 0) \
-              + int(cur_coupon["상품대금"].sum() if not cur_coupon.empty else 0)
-    tot_면가합 = int((cur_prize["발행수"] * cur_prize["면가"]).sum() if not cur_prize.empty else 0) \
-               + int((cur_coupon["발행수"] * cur_coupon["면가"]).sum() if not cur_coupon.empty else 0)
-    tot_수익률 = tot_수익 / tot_면가합 * 100 if tot_면가합 else 0
+    tot_정산     = int(cur_prize["정산금액"].sum()  if not cur_prize.empty  else 0) \
+                 + int(cur_coupon["정산금액"].sum() if not cur_coupon.empty else 0)
+    tot_교환금액 = int(cur_prize["교환금액"].sum()  if not cur_prize.empty  else 0) \
+                 + int(cur_coupon["교환금액"].sum() if not cur_coupon.empty else 0)
+    tot_확정수익 = int(cur_prize["확정수익"].sum()  if not cur_prize.empty  else 0) \
+                 + int(cur_coupon["확정수익"].sum() if not cur_coupon.empty else 0)
+    tot_잠재수익 = int(cur_prize["잠재수익"].sum()  if not cur_prize.empty  else 0) \
+                 + int(cur_coupon["잠재수익"].sum() if not cur_coupon.empty else 0)
+    tot_면가합   = int((cur_prize["발행수"] * cur_prize["면가"]).sum() if not cur_prize.empty else 0) \
+                 + int((cur_coupon["발행수"] * cur_coupon["면가"]).sum() if not cur_coupon.empty else 0)
+    tot_확정수익률 = tot_확정수익 / tot_면가합 * 100 if tot_면가합 else 0
+    tot_잠재수익률 = tot_잠재수익 / tot_면가합 * 100 if tot_면가합 else 0
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("IBK 소진포인트 (정산)",  won(tot_정산))
-    c2.metric("지급금액 합계 (액면가)", won(tot_면가합))
-    c3.metric("경품 + 쿠폰 상품대금",   won(tot_상품))
-    c4.metric("최종수익",               won(tot_수익))
-    c5.metric("수익률(면가기준)",        f"{tot_수익률:.1f}%")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("IBK 소진포인트 (정산금액)", won(tot_정산))
+    c2.metric("지급금액 합계 (액면가)",    won(tot_면가합))
+    c3.metric("총 교환금액",               won(tot_교환금액))
+
+    st.caption(
+        "**확정수익** = 정산금액 − (발행수−만료수)×면가 + 수수료  "
+        "  |  **잠재수익** = 정산금액 − 교환금액 + 수수료"
+    )
+    c4, c5, c6, c7 = st.columns(4)
+    c4.metric("확정수익 (만료 확정분만)",    won(tot_확정수익))
+    c5.metric("확정수익률 (면가기준)",       f"{tot_확정수익률:.1f}%")
+    c6.metric("잠재수익 (만료+미교환 포함)", won(tot_잠재수익))
+    c7.metric("잠재수익률 (면가기준)",       f"{tot_잠재수익률:.1f}%")
 
     if sel_month == "전체" and months:
         st.divider()
@@ -233,21 +244,24 @@ if page == "📊 종합":
         for mk in months:
             mp = monthly_p.get(mk, pd.DataFrame())
             mc = monthly_c.get(mk, pd.DataFrame())
-            정산 = int(mp["정산금액"].sum() if not mp.empty else 0) \
-                 + int(mc["정산금액"].sum() if not mc.empty else 0)
-            상품 = int(mp["상품대금"].sum() if not mp.empty else 0) \
-                 + int(mc["상품대금"].sum() if not mc.empty else 0)
-            수익 = int(mp["최종수익"].sum() if not mp.empty else 0) \
-                 + int(mc["최종수익"].sum() if not mc.empty else 0)
+            정산   = int(mp["정산금액"].sum() if not mp.empty else 0) \
+                   + int(mc["정산금액"].sum() if not mc.empty else 0)
+            교환   = int(mp["교환금액"].sum() if not mp.empty else 0) \
+                   + int(mc["교환금액"].sum() if not mc.empty else 0)
+            확정   = int(mp["확정수익"].sum() if not mp.empty else 0) \
+                   + int(mc["확정수익"].sum() if not mc.empty else 0)
+            잠재   = int(mp["잠재수익"].sum() if not mp.empty else 0) \
+                   + int(mc["잠재수익"].sum() if not mc.empty else 0)
             면가합 = int((mp["발행수"] * mp["면가"]).sum() if not mp.empty else 0) \
                    + int((mc["발행수"] * mc["면가"]).sum() if not mc.empty else 0)
             rows.append({
-                "월": mk,
-                "정산금액":         정산,
-                "지급금액(액면가)":  면가합,
-                "상품대금":         상품,
-                "최종수익":         수익,
-                "수익률_면가(%)":   round(수익 / 면가합 * 100, 1) if 면가합 else 0,
+                "월":              mk,
+                "정산금액":        정산,
+                "지급금액(액면가)": 면가합,
+                "총 교환금액":     교환,
+                "확정수익":        확정,
+                "잠재수익":        잠재,
+                "수익률_면가(%)":  round(잠재 / 면가합 * 100, 1) if 면가합 else 0,
             })
         monthly_df = pd.DataFrame(rows)
         st.dataframe(
@@ -285,9 +299,12 @@ elif page == "🎁 경품":
     df_p["교환율(%)"]  = (df_p["교환수"] / df_p["발행수"] * 100).round(1)
     df_p["미교환율(%)"] = (100 - df_p["교환율(%)"]).round(1)
 
-    p_총정산 = int(df_p["정산금액"].sum())
-    p_총수익 = int(df_p["최종수익"].sum())
-    p_수익률 = p_총수익 / p_총정산 * 100 if p_총정산 else 0
+    p_총정산    = int(df_p["정산금액"].sum())
+    p_면가합    = int((df_p["발행수"] * df_p["면가"]).sum())
+    p_확정수익  = int(df_p["확정수익"].sum())
+    p_잠재수익  = int(df_p["잠재수익"].sum())
+    p_확정수익률 = p_확정수익 / p_면가합 * 100 if p_면가합 else 0
+    p_잠재수익률 = p_잠재수익 / p_면가합 * 100 if p_면가합 else 0
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("총 발행수",  f"{df_p['발행수'].sum():,}건")
@@ -297,8 +314,8 @@ elif page == "🎁 경품":
 
     c5, c6, c7 = st.columns(3)
     c5.metric("총 정산금액", won(p_총정산))
-    c6.metric("총 최종수익", won(p_총수익))
-    c7.metric("수익률",      f"{p_수익률:.1f}%")
+    c6.metric("확정수익 (만료분만)",     won(p_확정수익), delta=f"수익률 {p_확정수익률:.1f}%")
+    c7.metric("잠재수익 (만료+미교환)", won(p_잠재수익), delta=f"수익률 {p_잠재수익률:.1f}%")
 
     st.divider()
     st.subheader("상품별 내역")
@@ -322,7 +339,8 @@ elif page == "🎁 경품":
     df_p["비고"] = df_p.apply(_prize_note, axis=1)
 
     cols = ["게임명", "상품", "게임P", "발행수", "교환수", "만료수",
-            "교환율(%)", "미교환율(%)", "정산금액", "상품대금", "수수료금액", "최종수익", "수익률_면가(%)", "비고"]
+            "교환율(%)", "미교환율(%)", "정산금액", "교환금액", "수수료금액",
+            "확정수익", "잠재수익", "수익률_면가(%)", "비고"]
 
     legend = []
     if std_r > 0:
@@ -343,7 +361,7 @@ elif page == "🎁 경품":
         st.warning(
             f"**[30% 목표 미달 {len(p_below30)}개 상품]** {items_txt}\n\n"
             f"해당 상품의 교환율이 높거나 게임P 대비 면가가 커서 수익률이 낮습니다. "
-            f"발행량 조절 또는 확률 재설계가 필요합니다."
+            f"발행량 조절 또는 확률 재설계가 필요합니다. (잠재수익 기준)"
         )
     else:
         st.success(f"**[30% 목표 분석]** 전체 경품 상품 목표 수익률(30%) 달성 중  ·  수익률 최저: {df_p['수익률_면가(%)'].min():.1f}%")
@@ -365,9 +383,12 @@ elif page == "🎟 할인쿠폰":
     df_c["사용율(%)"]   = (df_c["사용수"] / df_c["발행수"] * 100).round(1)
     df_c["미사용율(%)"] = (100 - df_c["사용율(%)"]).round(1)
 
-    c_총정산 = int(df_c["정산금액"].sum())
-    c_총수익 = int(df_c["최종수익"].sum())
-    c_수익률 = c_총수익 / c_총정산 * 100 if c_총정산 else 0
+    c_총정산    = int(df_c["정산금액"].sum())
+    c_면가합    = int((df_c["발행수"] * df_c["면가"]).sum())
+    c_확정수익  = int(df_c["확정수익"].sum())
+    c_잠재수익  = int(df_c["잠재수익"].sum())
+    c_확정수익률 = c_확정수익 / c_면가합 * 100 if c_면가합 else 0
+    c_잠재수익률 = c_잠재수익 / c_면가합 * 100 if c_면가합 else 0
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("총 발행수",  f"{df_c['발행수'].sum():,}건")
@@ -377,8 +398,8 @@ elif page == "🎟 할인쿠폰":
 
     c5, c6, c7 = st.columns(3)
     c5.metric("총 정산금액", won(c_총정산))
-    c6.metric("총 최종수익", won(c_총수익))
-    c7.metric("수익률",      f"{c_수익률:.1f}%")
+    c6.metric("확정수익 (만료분만)",     won(c_확정수익), delta=f"수익률 {c_확정수익률:.1f}%")
+    c7.metric("잠재수익 (만료+미교환)", won(c_잠재수익), delta=f"수익률 {c_잠재수익률:.1f}%")
 
     st.divider()
     st.subheader("쿠폰별 내역")
@@ -402,7 +423,8 @@ elif page == "🎟 할인쿠폰":
     df_c["비고"] = df_c.apply(_coupon_note, axis=1)
 
     cols = ["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수",
-            "사용율(%)", "미사용율(%)", "정산금액", "상품대금", "최종수익", "수익률_면가(%)", "비고"]
+            "사용율(%)", "미사용율(%)", "정산금액", "교환금액",
+            "확정수익", "잠재수익", "수익률_면가(%)", "비고"]
 
     legend_c = []
     if std_c > 0:
@@ -422,8 +444,8 @@ elif page == "🎟 할인쿠폰":
         )
         st.warning(
             f"**[30% 목표 미달 {len(c_below30)}개 쿠폰]** {items_txt}\n\n"
-            f"해당 쿠폰의 사용율이 높아 상품대금이 정산금액에 근접합니다. "
-            f"발행량 또는 쿠폰 면가 조정이 필요합니다."
+            f"해당 쿠폰의 사용율이 높아 교환금액이 정산금액에 근접합니다. "
+            f"발행량 또는 쿠폰 면가 조정이 필요합니다. (잠재수익 기준)"
         )
     else:
         st.success(f"**[30% 목표 분석]** 전체 할인쿠폰 목표 수익률(30%) 달성 중  ·  수익률 최저: {df_c['수익률_면가(%)'].min():.1f}%")
@@ -562,45 +584,45 @@ elif page == "📐 시뮬레이션":
         if not prize_calc.empty or not coupon_calc.empty:
             st.subheader("📊 예상 수익 결과")
 
-            s정산 = s상품 = s수수료 = s수익 = s만료 = 0
+            s정산 = s교환 = s수수료 = s수익 = s만료 = 0
             if not prize_calc.empty:
                 s정산   += int(prize_calc["예상 정산"].sum())
-                s상품   += int(prize_calc["예상 상품대금"].sum())
+                s교환   += int(prize_calc["예상 교환금액"].sum())
                 s수수료 += int(prize_calc["예상 수수료"].sum())
                 s수익   += int(prize_calc["예상 수익"].sum())
                 s만료   += int((prize_calc["예상 만료수"] * prize_calc["면가"]).sum())
             if not coupon_calc.empty:
                 s정산  += int(coupon_calc["예상 정산"].sum())
-                s상품  += int(coupon_calc["예상 상품대금"].sum())
+                s교환  += int(coupon_calc["예상 교환금액"].sum())
                 s수익  += int(coupon_calc["예상 수익"].sum())
                 s만료  += int((coupon_calc["예상 만료수"] * coupon_calc["면가"]).sum())
             s수익률 = s수익 / s정산 * 100 if s정산 else 0
 
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("예상 정산금액",  won(s정산))
-            c2.metric("예상 상품대금",  won(s상품))
+            c2.metric("예상 교환금액",  won(s교환))
             c3.metric("예상 수수료",    won(s수수료))
-            c4.metric("예상 최종수익",  won(s수익), delta=f"만료 {won(s만료)} 포함")
+            c4.metric("예상 잠재수익",  won(s수익), delta=f"만료 {won(s만료)} 포함")
             c5.metric("예상 수익률",    f"{s수익률:.1f}%")
 
             st.divider()
             if not prize_calc.empty:
                 st.markdown("**경품 상품별 예상 결과**")
                 pc = prize_calc[["게임명", "공급사명", "상품명", "면가", "발행수", "예상 교환수", "예상 만료수",
-                                  "예상 정산", "예상 상품대금", "예상 수수료", "예상 수익"]].copy()
+                                  "예상 정산", "예상 교환금액", "예상 수수료", "예상 수익"]].copy()
                 pc["상품"] = pc.apply(lambda r: _상품표시(r.get("공급사명", ""), r["상품명"], r["면가"]), axis=1)
                 pc["예상 수익률(%)"] = (pc["예상 수익"] / (pc["발행수"] * pc["면가"]) * 100).where(pc["예상 정산"] > 0).round(1)
                 pc = pc[["게임명", "상품", "발행수", "예상 교환수", "예상 만료수",
-                          "예상 정산", "예상 상품대금", "예상 수수료", "예상 수익", "예상 수익률(%)"]]
+                          "예상 정산", "예상 교환금액", "예상 수수료", "예상 수익", "예상 수익률(%)"]]
                 st.dataframe(_fmt(pc), use_container_width=True, hide_index=True)
             if not coupon_calc.empty:
                 st.markdown("**쿠폰별 예상 결과**")
                 cc = coupon_calc[["게임명", "쿠폰명", "면가", "발행수", "예상 사용수", "예상 만료수",
-                                   "예상 정산", "예상 상품대금", "예상 수익"]].copy()
+                                   "예상 정산", "예상 교환금액", "예상 수익"]].copy()
                 cc["쿠폰"] = cc.apply(lambda r: f"{r['쿠폰명']}  ({int(r['면가']):,}원)", axis=1)
                 cc["예상 수익률(%)"] = (cc["예상 수익"] / (cc["발행수"] * cc["면가"]) * 100).where(cc["예상 정산"] > 0).round(1)
                 cc = cc[["게임명", "쿠폰", "발행수", "예상 사용수", "예상 만료수",
-                          "예상 정산", "예상 상품대금", "예상 수익", "예상 수익률(%)"]]
+                          "예상 정산", "예상 교환금액", "예상 수익", "예상 수익률(%)"]]
                 st.dataframe(_fmt(cc), use_container_width=True, hide_index=True)
     else:
         st.info("수치를 수정한 후 [📊 결과 계산] 버튼을 클릭하세요.")
