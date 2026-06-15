@@ -33,7 +33,7 @@ INT_COLS = [
 ]
 PCT_COLS = [
     "교환율(%)", "미교환율(%)", "사용율(%)", "미사용율(%)", "수수료율",
-    "수익률_면가(%)", "수익률(%)", "예상 수익률(%)",
+    "수익률_면가(%)", "수익률(%)", "예상 확정수익률(%)",
     "현재 미교환율(%)", "예상 미교환율(%)",
     "현재 미사용율(%)", "예상 미사용율(%)",
     "현재수익률(%)", "예상수익률(%)",
@@ -318,8 +318,8 @@ elif page == "🎁 경품":
 
     c5, c6, c7 = st.columns(3)
     c5.metric("총 정산금액", won(p_총정산))
-    c6.metric("확정수익 (만료분만)",     won(p_확정수익), delta=f"수익률 {p_확정수익률:.1f}%")
-    c7.metric("잠재수익 (만료+미교환)", won(p_잠재수익), delta=f"수익률 {p_잠재수익률:.1f}%")
+    c6.metric("확정수익 (만료분만)",     f"{won(p_확정수익)}  {p_확정수익률:.1f}%")
+    c7.metric("잠재수익 (만료+미교환)", f"{won(p_잠재수익)}  {p_잠재수익률:.1f}%")
 
     st.divider()
     st.subheader("상품별 내역")
@@ -341,12 +341,8 @@ elif page == "🎁 경품":
         return "  /  ".join(parts)
 
     df_p["비고"] = df_p.apply(_prize_note, axis=1)
-    df_p["확정수익_표시"] = df_p.apply(
-        lambda r: f"{int(r['확정수익']):,}원    {r['확정수익률(%)']:.1f}%", axis=1
-    )
-    df_p["잠재수익_표시"] = df_p.apply(
-        lambda r: f"{int(r['잠재수익']):,}원    {r['잠재수익률(%)']:.1f}%", axis=1
-    )
+    df_p["확정수익_표시"] = df_p["확정수익"].apply(lambda v: f"{int(v):,}원")
+    df_p["잠재수익_표시"] = df_p["잠재수익"].apply(lambda v: f"{int(v):,}원")
     _확정_p_style = [
         "color:#16a34a;font-weight:bold;font-size:15px;white-space:nowrap" if v >= 0
         else "color:#dc2626;font-weight:bold;font-size:15px;white-space:nowrap"
@@ -360,10 +356,10 @@ elif page == "🎁 경품":
 
     cols = ["게임명", "상품", "게임P", "발행수", "교환수", "만료수",
             "교환율(%)", "미교환율(%)", "정산금액", "교환금액", "수수료금액",
-            "확정수익_표시", "잠재수익_표시", "수익률_면가(%)", "비고"]
+            "확정수익_표시", "확정수익률(%)", "잠재수익_표시", "잠재수익률(%)", "비고"]
 
     st.caption("확정수익 = 정산금액 − (발행수−만료수)×면가 + 수수료  |  잠재수익 = 정산금액 − 교환금액 + 수수료")
-    _disp_p = df_p[cols].rename(columns={"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"})
+    _disp_p = df_p[cols].rename(columns={"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익"})
     _sty_p = _fmt(_disp_p, skip_fmt=["확정수익", "잠재수익"])
     _sty_p = _sty_p.apply(lambda _: _확정_p_style, subset=["확정수익"], axis=0)
     _sty_p = _sty_p.apply(lambda _: _잠재_p_style, subset=["잠재수익"], axis=0)
@@ -415,8 +411,8 @@ elif page == "🎟 할인쿠폰":
 
     c5, c6, c7 = st.columns(3)
     c5.metric("총 정산금액", won(c_총정산))
-    c6.metric("확정수익 (만료분만)",     won(c_확정수익), delta=f"수익률 {c_확정수익률:.1f}%")
-    c7.metric("잠재수익 (만료+미교환)", won(c_잠재수익), delta=f"수익률 {c_잠재수익률:.1f}%")
+    c6.metric("확정수익 (만료분만)",     f"{won(c_확정수익)}  {c_확정수익률:.1f}%")
+    c7.metric("잠재수익 (만료+미교환)", f"{won(c_잠재수익)}  {c_잠재수익률:.1f}%")
 
     st.divider()
     st.subheader("쿠폰별 내역")
@@ -438,12 +434,8 @@ elif page == "🎟 할인쿠폰":
         return "  /  ".join(parts)
 
     df_c["비고"] = df_c.apply(_coupon_note, axis=1)
-    df_c["확정수익_표시"] = df_c.apply(
-        lambda r: f"{int(r['확정수익']):,}원    {r['확정수익률(%)']:.1f}%", axis=1
-    )
-    df_c["잠재수익_표시"] = df_c.apply(
-        lambda r: f"{int(r['잠재수익']):,}원    {r['잠재수익률(%)']:.1f}%", axis=1
-    )
+    df_c["확정수익_표시"] = df_c["확정수익"].apply(lambda v: f"{int(v):,}원")
+    df_c["잠재수익_표시"] = df_c["잠재수익"].apply(lambda v: f"{int(v):,}원")
     _확정_c_style = [
         "color:#16a34a;font-weight:bold;font-size:15px;white-space:nowrap" if v >= 0
         else "color:#dc2626;font-weight:bold;font-size:15px;white-space:nowrap"
@@ -457,10 +449,10 @@ elif page == "🎟 할인쿠폰":
 
     cols = ["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수",
             "사용율(%)", "미사용율(%)", "정산금액", "교환금액",
-            "확정수익_표시", "잠재수익_표시", "수익률_면가(%)", "비고"]
+            "확정수익_표시", "확정수익률(%)", "잠재수익_표시", "잠재수익률(%)", "비고"]
 
     st.caption("확정수익 = 정산금액 − (발행수−만료수)×면가  |  잠재수익 = 정산금액 − 교환금액")
-    _disp_c = df_c[cols].rename(columns={"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"})
+    _disp_c = df_c[cols].rename(columns={"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익"})
     _sty_c = _fmt(_disp_c, skip_fmt=["확정수익", "잠재수익"])
     _sty_c = _sty_c.apply(lambda _: _확정_c_style, subset=["확정수익"], axis=0)
     _sty_c = _sty_c.apply(lambda _: _잠재_c_style, subset=["잠재수익"], axis=0)
@@ -546,8 +538,8 @@ elif page == "📐 시뮬레이션":
             c1.metric("예상 정산금액",  won(s정산))
             c2.metric("예상 교환금액",  won(s교환))
             c3.metric("예상 수수료",    won(s수수료))
-            c4.metric("예상 잠재수익",  won(s수익), delta=f"만료 {won(s만료)} 포함")
-            c5.metric("예상 수익률",    f"{s수익률:.1f}%")
+            c4.metric("예상 확정수익",  won(s수익), delta=f"만료 {won(s만료)} 포함")
+            c5.metric("예상 확정수익률", f"{s수익률:.1f}%")
 
             st.divider()
             if not prize_calc.empty:
@@ -555,18 +547,18 @@ elif page == "📐 시뮬레이션":
                 pc = prize_calc[["게임명", "공급사명", "상품명", "면가", "발행수", "예상 교환수", "예상 만료수",
                                   "예상 정산", "예상 교환금액", "예상 수수료", "예상 수익"]].copy()
                 pc["상품"] = pc.apply(lambda r: _상품표시(r.get("공급사명", ""), r["상품명"], r["면가"]), axis=1)
-                pc["예상 수익률(%)"] = (pc["예상 수익"] / (pc["발행수"] * pc["면가"]) * 100).where(pc["예상 정산"] > 0).round(1)
+                pc["예상 확정수익률(%)"] = (pc["예상 수익"] / (pc["발행수"] * pc["면가"]) * 100).where(pc["예상 정산"] > 0).round(1)
                 pc = pc[["게임명", "상품", "발행수", "예상 교환수", "예상 만료수",
-                          "예상 정산", "예상 교환금액", "예상 수수료", "예상 수익", "예상 수익률(%)"]]
+                          "예상 정산", "예상 교환금액", "예상 수수료", "예상 수익", "예상 확정수익률(%)"]]
                 st.dataframe(_fmt(pc), use_container_width=True, hide_index=True)
             if not coupon_calc.empty:
                 st.markdown("**쿠폰별 예상 결과**")
                 cc = coupon_calc[["게임명", "쿠폰명", "면가", "발행수", "예상 사용수", "예상 만료수",
                                    "예상 정산", "예상 교환금액", "예상 수익"]].copy()
                 cc["쿠폰"] = cc.apply(lambda r: f"{r['쿠폰명']}  ({int(r['면가']):,}원)", axis=1)
-                cc["예상 수익률(%)"] = (cc["예상 수익"] / (cc["발행수"] * cc["면가"]) * 100).where(cc["예상 정산"] > 0).round(1)
+                cc["예상 확정수익률(%)"] = (cc["예상 수익"] / (cc["발행수"] * cc["면가"]) * 100).where(cc["예상 정산"] > 0).round(1)
                 cc = cc[["게임명", "쿠폰", "발행수", "예상 사용수", "예상 만료수",
-                          "예상 정산", "예상 교환금액", "예상 수익", "예상 수익률(%)"]]
+                          "예상 정산", "예상 교환금액", "예상 수익", "예상 확정수익률(%)"]]
                 st.dataframe(_fmt(cc), use_container_width=True, hide_index=True)
     else:
         st.info("아래에서 수치를 수정한 후 [📊 결과 계산] 버튼을 클릭하세요.")
