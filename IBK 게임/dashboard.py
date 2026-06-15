@@ -48,8 +48,9 @@ def _metric_profit(col, label, amount_str, rate):
     col.markdown(f"""
 <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;background:#fff;">
   <div style="color:rgba(49,51,63,.6);font-size:13px;margin-bottom:6px;">{label}</div>
-  <div style="font-size:22px;font-weight:700;color:rgb(49,51,63);">{amount_str}</div>
-  <div style="font-size:14px;font-weight:700;color:{color};margin-top:6px;">{rate:+.1f}%</div>
+  <div style="font-size:22px;font-weight:700;color:rgb(49,51,63);white-space:nowrap;">
+    {amount_str}&nbsp;&nbsp;&nbsp;<span style="color:{color};">{rate:+.1f}%</span>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
