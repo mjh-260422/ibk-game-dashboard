@@ -342,11 +342,21 @@ elif page == "🎁 경품":
 
     df_p["비고"] = df_p.apply(_prize_note, axis=1)
     df_p["확정수익_표시"] = df_p.apply(
-        lambda r: f"{int(r['확정수익']):,}원  ({r['확정수익률(%)']:.1f}%)", axis=1
+        lambda r: f"{int(r['확정수익']):,}원    {r['확정수익률(%)']:.1f}%", axis=1
     )
     df_p["잠재수익_표시"] = df_p.apply(
-        lambda r: f"{int(r['잠재수익']):,}원  ({r['잠재수익률(%)']:.1f}%)", axis=1
+        lambda r: f"{int(r['잠재수익']):,}원    {r['잠재수익률(%)']:.1f}%", axis=1
     )
+    _확정_p_style = [
+        "color:#16a34a;font-weight:bold;font-size:15px;white-space:nowrap" if v >= 0
+        else "color:#dc2626;font-weight:bold;font-size:15px;white-space:nowrap"
+        for v in df_p["확정수익"].values
+    ]
+    _잠재_p_style = [
+        "color:#16a34a;font-weight:bold;font-size:15px;white-space:nowrap" if v >= 0
+        else "color:#dc2626;font-weight:bold;font-size:15px;white-space:nowrap"
+        for v in df_p["잠재수익"].values
+    ]
 
     cols = ["게임명", "상품", "게임P", "발행수", "교환수", "만료수",
             "교환율(%)", "미교환율(%)", "정산금액", "교환금액", "수수료금액",
@@ -355,7 +365,8 @@ elif page == "🎁 경품":
     st.caption("확정수익 = 정산금액 − (발행수−만료수)×면가 + 수수료  |  잠재수익 = 정산금액 − 교환금액 + 수수료")
     _disp_p = df_p[cols].rename(columns={"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"})
     _sty_p = _fmt(_disp_p, skip_fmt=["확정수익", "잠재수익"])
-    _sty_p = _sty_p.set_properties(subset=["확정수익", "잠재수익"], **{"font-size": "16px"})
+    _sty_p = _sty_p.apply(lambda _: _확정_p_style, subset=["확정수익"], axis=0)
+    _sty_p = _sty_p.apply(lambda _: _잠재_p_style, subset=["잠재수익"], axis=0)
     st.dataframe(_sty_p, use_container_width=True, hide_index=True)
 
     p_below30 = df_p[df_p["수익률_면가(%)"] < 30]
@@ -428,11 +439,21 @@ elif page == "🎟 할인쿠폰":
 
     df_c["비고"] = df_c.apply(_coupon_note, axis=1)
     df_c["확정수익_표시"] = df_c.apply(
-        lambda r: f"{int(r['확정수익']):,}원  ({r['확정수익률(%)']:.1f}%)", axis=1
+        lambda r: f"{int(r['확정수익']):,}원    {r['확정수익률(%)']:.1f}%", axis=1
     )
     df_c["잠재수익_표시"] = df_c.apply(
-        lambda r: f"{int(r['잠재수익']):,}원  ({r['잠재수익률(%)']:.1f}%)", axis=1
+        lambda r: f"{int(r['잠재수익']):,}원    {r['잠재수익률(%)']:.1f}%", axis=1
     )
+    _확정_c_style = [
+        "color:#16a34a;font-weight:bold;font-size:15px;white-space:nowrap" if v >= 0
+        else "color:#dc2626;font-weight:bold;font-size:15px;white-space:nowrap"
+        for v in df_c["확정수익"].values
+    ]
+    _잠재_c_style = [
+        "color:#16a34a;font-weight:bold;font-size:15px;white-space:nowrap" if v >= 0
+        else "color:#dc2626;font-weight:bold;font-size:15px;white-space:nowrap"
+        for v in df_c["잠재수익"].values
+    ]
 
     cols = ["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수",
             "사용율(%)", "미사용율(%)", "정산금액", "교환금액",
@@ -441,7 +462,8 @@ elif page == "🎟 할인쿠폰":
     st.caption("확정수익 = 정산금액 − (발행수−만료수)×면가  |  잠재수익 = 정산금액 − 교환금액")
     _disp_c = df_c[cols].rename(columns={"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"})
     _sty_c = _fmt(_disp_c, skip_fmt=["확정수익", "잠재수익"])
-    _sty_c = _sty_c.set_properties(subset=["확정수익", "잠재수익"], **{"font-size": "16px"})
+    _sty_c = _sty_c.apply(lambda _: _확정_c_style, subset=["확정수익"], axis=0)
+    _sty_c = _sty_c.apply(lambda _: _잠재_c_style, subset=["잠재수익"], axis=0)
     st.dataframe(_sty_c, use_container_width=True, hide_index=True)
 
     c_below30 = df_c[df_c["수익률_면가(%)"] < 30]
@@ -464,13 +486,11 @@ elif page == "🎟 할인쿠폰":
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "📐 시뮬레이션":
     st.title("📐 미교환율 시뮬레이션")
-    st.caption(f"기준: {sel_month}  ·  수치 수정 후 [결과 계산] 버튼 클릭")
-    st.divider()
+    st.caption(f"기준: {sel_month}  ·  아래에서 수치 수정 후 [결과 계산] 버튼 클릭")
 
     sim_prize_df  = cur_prize.copy()  if not cur_prize.empty  else pd.DataFrame()
     sim_coupon_df = cur_coupon.copy() if not cur_coupon.empty else pd.DataFrame()
 
-    # session_state 초기화
     if "sim_prize_adj" not in st.session_state:
         st.session_state.sim_prize_adj = {}
     if "sim_coupon_adj" not in st.session_state:
@@ -482,103 +502,19 @@ elif page == "📐 시뮬레이션":
         try: return f"{int(v):,}"
         except: return v
 
-    # ── 경품 편집 테이블 ────────────────────────────────────────────────────────
-    edited_p_state = None
-    sim_p = pd.DataFrame()
-    if not sim_prize_df.empty:
-        sim_p = sim_prize_df[["게임명", "공급사명", "상품명", "게임P", "면가", "발행수", "교환수", "만료수", "수수료율"]].copy()
-        sim_p["현재 미교환율(%)"] = ((sim_p["발행수"] - sim_p["교환수"]) / sim_p["발행수"] * 100).round(1)
-
-        def _get_prize_adj(row):
-            key = (row["게임명"], row["상품명"])
-            return st.session_state.sim_prize_adj.get(key, row["현재 미교환율(%)"])
-        sim_p["예상 미교환율(%)"] = sim_p.apply(_get_prize_adj, axis=1)
-
-        disp_p = sim_p.copy()
-        disp_p["상품"] = disp_p.apply(
-            lambda r: _상품표시(r.get("공급사명", ""), r["상품명"], r["면가"]), axis=1
-        )
-        for c in ["게임P", "발행수", "교환수", "만료수"]:
-            disp_p[c] = disp_p[c].apply(_fmt_int)
-
-        st.subheader("🎁 경품 — 미교환율 조정")
-        edited_p_state = st.data_editor(
-            disp_p[["게임명", "상품", "게임P", "발행수", "교환수", "만료수", "수수료율", "현재 미교환율(%)", "예상 미교환율(%)"]],
-            use_container_width=True,
-            hide_index=True,
-            disabled=["게임명", "상품", "게임P", "발행수", "교환수", "만료수", "수수료율", "현재 미교환율(%)"],
-            column_config={
-                "현재 미교환율(%)": st.column_config.NumberColumn("현재 미교환율(%)", format="%.1f%%"),
-                "예상 미교환율(%)": st.column_config.NumberColumn(
-                    "예상 미교환율(%)", min_value=0.0, max_value=100.0, step=0.5, format="%.1f%%"
-                ),
-            },
-            key="sim_prize_editor",
-        )
-
-    # ── 쿠폰 편집 테이블 ────────────────────────────────────────────────────────
-    edited_c_state = None
-    sim_c = pd.DataFrame()
-    if not sim_coupon_df.empty:
-        sim_c = sim_coupon_df[["게임명", "쿠폰명", "게임P", "면가", "발행수", "사용수", "만료수"]].copy()
-        sim_c["현재 미사용율(%)"] = ((sim_c["발행수"] - sim_c["사용수"]) / sim_c["발행수"] * 100).round(1)
-
-        def _get_coupon_adj(row):
-            key = (row["게임명"], row["쿠폰명"])
-            return st.session_state.sim_coupon_adj.get(key, row["현재 미사용율(%)"])
-        sim_c["예상 미사용율(%)"] = sim_c.apply(_get_coupon_adj, axis=1)
-
-        disp_c = sim_c.copy()
-        disp_c["쿠폰"] = disp_c.apply(
-            lambda r: f"{r['쿠폰명']}  ({int(r['면가']):,}원)", axis=1
-        )
-        for c in ["게임P", "발행수", "사용수", "만료수"]:
-            disp_c[c] = disp_c[c].apply(_fmt_int)
-
-        st.subheader("🎟 할인쿠폰 — 미사용율 조정")
-        edited_c_state = st.data_editor(
-            disp_c[["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수", "현재 미사용율(%)", "예상 미사용율(%)"]],
-            use_container_width=True,
-            hide_index=True,
-            disabled=["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수", "현재 미사용율(%)"],
-            column_config={
-                "현재 미사용율(%)": st.column_config.NumberColumn("현재 미사용율(%)", format="%.1f%%"),
-                "예상 미사용율(%)": st.column_config.NumberColumn(
-                    "예상 미사용율(%)", min_value=0.0, max_value=100.0, step=0.5, format="%.1f%%"
-                ),
-            },
-            key="sim_coupon_editor",
-        )
-
-    # ── 계산 버튼 ───────────────────────────────────────────────────────────────
-    st.divider()
-    col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-    run_calc = col_btn1.button("📊 결과 계산", type="primary", use_container_width=True)
-    if col_btn2.button("↺ 초기화", use_container_width=True):
-        st.session_state.sim_prize_adj = {}
-        st.session_state.sim_coupon_adj = {}
-        st.session_state.sim_result_ready = False
-        st.rerun()
-
-    if run_calc:
-        if edited_p_state is not None:
-            for i, erow in edited_p_state.iterrows():
-                key = (sim_p.at[i, "게임명"], sim_p.at[i, "상품명"])
-                st.session_state.sim_prize_adj[key] = erow["예상 미교환율(%)"]
-        if edited_c_state is not None and not sim_c.empty:
-            for i, erow in edited_c_state.iterrows():
-                key = (sim_c.at[i, "게임명"], sim_c.at[i, "쿠폰명"])
-                st.session_state.sim_coupon_adj[key] = erow["예상 미사용율(%)"]
-        st.session_state.sim_result_ready = True
-
-    # ── 예상 결과 요약 ──────────────────────────────────────────────────────────
+    # ── 예상 결과 요약 (상단) ───────────────────────────────────────────────────
     if st.session_state.sim_result_ready:
         prize_calc = pd.DataFrame()
         coupon_calc = pd.DataFrame()
 
-        if not sim_p.empty and edited_p_state is not None:
-            calc_p = sim_p.copy()
-            calc_p["예상 미교환율(%)"] = edited_p_state["예상 미교환율(%)"]
+        if not sim_prize_df.empty:
+            calc_p = sim_prize_df[["게임명", "공급사명", "상품명", "게임P", "면가", "발행수", "교환수", "만료수", "수수료율"]].copy()
+            calc_p["예상 미교환율(%)"] = calc_p.apply(
+                lambda r: st.session_state.sim_prize_adj.get(
+                    (r["게임명"], r["상품명"]),
+                    (r["발행수"] - r["교환수"]) / r["발행수"] * 100
+                ), axis=1
+            )
             prize_calc = calc_p.join(calc_p.apply(calc_prize_row, axis=1))
 
         if not sim_coupon_df.empty:
@@ -633,4 +569,93 @@ elif page == "📐 시뮬레이션":
                           "예상 정산", "예상 교환금액", "예상 수익", "예상 수익률(%)"]]
                 st.dataframe(_fmt(cc), use_container_width=True, hide_index=True)
     else:
-        st.info("수치를 수정한 후 [📊 결과 계산] 버튼을 클릭하세요.")
+        st.info("아래에서 수치를 수정한 후 [📊 결과 계산] 버튼을 클릭하세요.")
+
+    # ── 교환율 조정 입력 (하단) ─────────────────────────────────────────────────
+    st.divider()
+
+    edited_p_state = None
+    sim_p = pd.DataFrame()
+    if not sim_prize_df.empty:
+        sim_p = sim_prize_df[["게임명", "공급사명", "상품명", "게임P", "면가", "발행수", "교환수", "만료수", "수수료율"]].copy()
+        sim_p["현재 미교환율(%)"] = ((sim_p["발행수"] - sim_p["교환수"]) / sim_p["발행수"] * 100).round(1)
+
+        def _get_prize_adj(row):
+            key = (row["게임명"], row["상품명"])
+            return st.session_state.sim_prize_adj.get(key, row["현재 미교환율(%)"])
+        sim_p["예상 미교환율(%)"] = sim_p.apply(_get_prize_adj, axis=1)
+
+        disp_p = sim_p.copy()
+        disp_p["상품"] = disp_p.apply(
+            lambda r: _상품표시(r.get("공급사명", ""), r["상품명"], r["면가"]), axis=1
+        )
+        for c in ["게임P", "발행수", "교환수", "만료수"]:
+            disp_p[c] = disp_p[c].apply(_fmt_int)
+
+        st.subheader("🎁 경품 — 미교환율 조정")
+        edited_p_state = st.data_editor(
+            disp_p[["게임명", "상품", "게임P", "발행수", "교환수", "만료수", "수수료율", "현재 미교환율(%)", "예상 미교환율(%)"]],
+            use_container_width=True,
+            hide_index=True,
+            disabled=["게임명", "상품", "게임P", "발행수", "교환수", "만료수", "수수료율", "현재 미교환율(%)"],
+            column_config={
+                "현재 미교환율(%)": st.column_config.NumberColumn("현재 미교환율(%)", format="%.1f%%"),
+                "예상 미교환율(%)": st.column_config.NumberColumn(
+                    "예상 미교환율(%)", min_value=0.0, max_value=100.0, step=0.5, format="%.1f%%"
+                ),
+            },
+            key="sim_prize_editor",
+        )
+
+    edited_c_state = None
+    sim_c = pd.DataFrame()
+    if not sim_coupon_df.empty:
+        sim_c = sim_coupon_df[["게임명", "쿠폰명", "게임P", "면가", "발행수", "사용수", "만료수"]].copy()
+        sim_c["현재 미사용율(%)"] = ((sim_c["발행수"] - sim_c["사용수"]) / sim_c["발행수"] * 100).round(1)
+
+        def _get_coupon_adj(row):
+            key = (row["게임명"], row["쿠폰명"])
+            return st.session_state.sim_coupon_adj.get(key, row["현재 미사용율(%)"])
+        sim_c["예상 미사용율(%)"] = sim_c.apply(_get_coupon_adj, axis=1)
+
+        disp_c = sim_c.copy()
+        disp_c["쿠폰"] = disp_c.apply(
+            lambda r: f"{r['쿠폰명']}  ({int(r['면가']):,}원)", axis=1
+        )
+        for c in ["게임P", "발행수", "사용수", "만료수"]:
+            disp_c[c] = disp_c[c].apply(_fmt_int)
+
+        st.subheader("🎟 할인쿠폰 — 미사용율 조정")
+        edited_c_state = st.data_editor(
+            disp_c[["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수", "현재 미사용율(%)", "예상 미사용율(%)"]],
+            use_container_width=True,
+            hide_index=True,
+            disabled=["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수", "현재 미사용율(%)"],
+            column_config={
+                "현재 미사용율(%)": st.column_config.NumberColumn("현재 미사용율(%)", format="%.1f%%"),
+                "예상 미사용율(%)": st.column_config.NumberColumn(
+                    "예상 미사용율(%)", min_value=0.0, max_value=100.0, step=0.5, format="%.1f%%"
+                ),
+            },
+            key="sim_coupon_editor",
+        )
+
+    col_btn1, col_btn2, _ = st.columns([1, 1, 4])
+    run_calc = col_btn1.button("📊 결과 계산", type="primary", use_container_width=True)
+    if col_btn2.button("↺ 초기화", use_container_width=True):
+        st.session_state.sim_prize_adj = {}
+        st.session_state.sim_coupon_adj = {}
+        st.session_state.sim_result_ready = False
+        st.rerun()
+
+    if run_calc:
+        if edited_p_state is not None:
+            for i, erow in edited_p_state.iterrows():
+                key = (sim_p.at[i, "게임명"], sim_p.at[i, "상품명"])
+                st.session_state.sim_prize_adj[key] = erow["예상 미교환율(%)"]
+        if edited_c_state is not None and not sim_c.empty:
+            for i, erow in edited_c_state.iterrows():
+                key = (sim_c.at[i, "게임명"], sim_c.at[i, "쿠폰명"])
+                st.session_state.sim_coupon_adj[key] = erow["예상 미사용율(%)"]
+        st.session_state.sim_result_ready = True
+        st.rerun()
