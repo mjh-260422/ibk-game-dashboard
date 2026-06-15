@@ -88,7 +88,6 @@ def _prize_record(row):
         '정산금액':   정산금액,
         '확정수익':  확정수익,
         '잠재수익':  잠재수익,
-        '수익률_정산(%)':  round(_safe_float(row[19]) * 100, 1),
         '수익률_면가(%)':  round(_safe_float(row[20]) * 100, 1) if len(row) > 20 else 0,
     }
 
@@ -115,7 +114,6 @@ def _coupon_record(row):
         '정산금액':  정산금액,
         '확정수익':  확정수익,
         '잠재수익':  잠재수익,
-        '수익률_정산(%)': round(_safe_float(row[19]) * 100, 1),
         '수익률_면가(%)': round(_safe_float(row[20]) * 100, 1) if len(row) > 20 else 0,
     }
 
@@ -137,7 +135,7 @@ def load_prize_df(service=None):
             records.append(_prize_record(row))
 
     cols = ['게임명','공급사명','상품명','게임P','면가','수수료율','발행수','교환수','만료수',
-            '교환금액','수수료금액','정산금액','확정수익','잠재수익','수익률_정산(%)','수익률_면가(%)']
+            '교환금액','수수료금액','정산금액','확정수익','잠재수익','수익률_면가(%)']
     return pd.DataFrame(records) if records else pd.DataFrame(columns=cols)
 
 
@@ -158,7 +156,7 @@ def load_coupon_df(service=None):
             records.append(_coupon_record(row))
 
     cols = ['게임명','쿠폰명','게임P','면가','발행수','사용수','만료수',
-            '교환금액','수수료금액','정산금액','확정수익','잠재수익','수익률_정산(%)','수익률_면가(%)']
+            '교환금액','수수료금액','정산금액','확정수익','잠재수익','수익률_면가(%)']
     return pd.DataFrame(records) if records else pd.DataFrame(columns=cols)
 
 
