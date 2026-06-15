@@ -267,10 +267,9 @@ if page == "📊 종합":
                 "수익률_면가(%)":  round(잠재 / 면가합 * 100, 1) if 면가합 else 0,
             })
         monthly_df = pd.DataFrame(rows)
-        st.dataframe(
-            _fmt_profit_only(monthly_df, profit_col="수익률_면가(%)", target=30),
-            use_container_width=True, hide_index=True,
-        )
+        _sty_m = _fmt_profit_only(monthly_df, profit_col="수익률_면가(%)", target=30)
+        _sty_m = _sty_m.format_index(lambda x: "수익률(%)" if x == "수익률_면가(%)" else x, axis=1)
+        st.dataframe(_sty_m, use_container_width=True, hide_index=True)
         below = [r for r in rows if r["수익률_면가(%)"] < 30]
         above = [r for r in rows if r["수익률_면가(%)"] >= 30]
         if below:
@@ -351,19 +350,13 @@ elif page == "🎁 경품":
             "교환율(%)", "미교환율(%)", "정산금액", "교환금액", "수수료금액",
             "확정수익_표시", "잠재수익_표시", "수익률_면가(%)", "비고"]
 
-    legend = []
-    if std_r > 0:
-        legend.append(f"평균 교환율 {mean_r:.1f}%  ·  빨강=평균+1.5SD 초과  ·  노랑=평균-1.5SD 미만")
-    legend.append("주황=수익률 30% 미달  ·  진한빨강=이중 위협")
-    legend.append("확정수익 = 정산금액 − (발행수−만료수)×면가 + 수수료  |  잠재수익 = 정산금액 − 교환금액 + 수수료")
-    st.caption("  |  ".join(legend))
-    _sty_p = _fmt_highlight(df_p[cols], "교환율(%)", profit_col="수익률_면가(%)",
-                            skip_fmt=["확정수익_표시", "잠재수익_표시"])
+    st.caption("확정수익 = 정산금액 − (발행수−만료수)×면가 + 수수료  |  잠재수익 = 정산금액 − 교환금액 + 수수료")
+    _sty_p = _fmt(df_p[cols])
     _sty_p = _sty_p.set_properties(
         subset=["확정수익_표시", "잠재수익_표시"], **{"font-size": "16px"}
     )
     _sty_p = _sty_p.format_index(
-        lambda x: {"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익"}.get(x, x), axis=1
+        lambda x: {"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"}.get(x, x), axis=1
     )
     st.dataframe(_sty_p, use_container_width=True, hide_index=True)
 
@@ -447,19 +440,13 @@ elif page == "🎟 할인쿠폰":
             "사용율(%)", "미사용율(%)", "정산금액", "교환금액",
             "확정수익_표시", "잠재수익_표시", "수익률_면가(%)", "비고"]
 
-    legend_c = []
-    if std_c > 0:
-        legend_c.append(f"평균 사용율 {mean_c:.1f}%  ·  빨강=평균+1.5SD 초과  ·  노랑=평균-1.5SD 미만")
-    legend_c.append("주황=수익률 30% 미달  ·  진한빨강=이중 위협")
-    legend_c.append("확정수익 = 정산금액 − (발행수−만료수)×면가  |  잠재수익 = 정산금액 − 교환금액")
-    st.caption("  |  ".join(legend_c))
-    _sty_c = _fmt_highlight(df_c[cols], "사용율(%)", profit_col="수익률_면가(%)",
-                            skip_fmt=["확정수익_표시", "잠재수익_표시"])
+    st.caption("확정수익 = 정산금액 − (발행수−만료수)×면가  |  잠재수익 = 정산금액 − 교환금액")
+    _sty_c = _fmt(df_c[cols])
     _sty_c = _sty_c.set_properties(
         subset=["확정수익_표시", "잠재수익_표시"], **{"font-size": "16px"}
     )
     _sty_c = _sty_c.format_index(
-        lambda x: {"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익"}.get(x, x), axis=1
+        lambda x: {"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"}.get(x, x), axis=1
     )
     st.dataframe(_sty_c, use_container_width=True, hide_index=True)
 
