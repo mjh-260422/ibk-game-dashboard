@@ -43,6 +43,16 @@ PCT_COLS = [
 def won(n):  return f"{int(n):,}원"
 def pct(r):  return f"{r * 100:.1f}%"
 
+def _metric_profit(col, label, amount_str, rate):
+    color = "#16a34a" if rate >= 0 else "#dc2626"
+    col.markdown(f"""
+<div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;background:#fff;">
+  <div style="color:rgba(49,51,63,.6);font-size:13px;margin-bottom:6px;">{label}</div>
+  <div style="font-size:22px;font-weight:700;color:rgb(49,51,63);">{amount_str}</div>
+  <div style="font-size:14px;font-weight:700;color:{color};margin-top:6px;">{rate:+.1f}%</div>
+</div>
+""", unsafe_allow_html=True)
+
 def _fmt(df, skip_fmt=None):
     _skip = set(skip_fmt or [])
     fmt = {}
@@ -318,8 +328,8 @@ elif page == "🎁 경품":
 
     c5, c6, c7 = st.columns(3)
     c5.metric("총 정산금액", won(p_총정산))
-    c6.metric("확정수익 (만료분만)",     f"{won(p_확정수익)}  {p_확정수익률:.1f}%")
-    c7.metric("잠재수익 (만료+미교환)", f"{won(p_잠재수익)}  {p_잠재수익률:.1f}%")
+    _metric_profit(c6, "확정수익 (만료분만)",     won(p_확정수익), p_확정수익률)
+    _metric_profit(c7, "잠재수익 (만료+미교환)", won(p_잠재수익), p_잠재수익률)
 
     st.divider()
     st.subheader("상품별 내역")
@@ -411,8 +421,8 @@ elif page == "🎟 할인쿠폰":
 
     c5, c6, c7 = st.columns(3)
     c5.metric("총 정산금액", won(c_총정산))
-    c6.metric("확정수익 (만료분만)",     f"{won(c_확정수익)}  {c_확정수익률:.1f}%")
-    c7.metric("잠재수익 (만료+미교환)", f"{won(c_잠재수익)}  {c_잠재수익률:.1f}%")
+    _metric_profit(c6, "확정수익 (만료분만)",     won(c_확정수익), c_확정수익률)
+    _metric_profit(c7, "잠재수익 (만료+미교환)", won(c_잠재수익), c_잠재수익률)
 
     st.divider()
     st.subheader("쿠폰별 내역")
