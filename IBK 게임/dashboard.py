@@ -26,13 +26,14 @@ div[data-testid="stRadio"] label:hover { background:#e2e8f0; }
 INT_COLS = [
     "게임P", "면가", "발행수", "교환수", "사용수", "만료수",
     "정산금액", "교환금액", "수수료금액", "확정수익", "잠재수익",
+    "지급금액(액면가)", "총 교환금액",
     "예상 교환수", "예상 사용수", "예상 만료수",
     "예상 정산", "예상 교환금액", "예상 수수료", "예상 수익",
     "경품비", "쿠폰비", "현재수익", "미교환수익", "예상수익",
 ]
 PCT_COLS = [
     "교환율(%)", "미교환율(%)", "사용율(%)", "미사용율(%)", "수수료율",
-    "수익률_면가(%)", "예상 수익률(%)",
+    "수익률_면가(%)", "수익률(%)", "예상 수익률(%)",
     "현재 미교환율(%)", "예상 미교환율(%)",
     "현재 미사용율(%)", "예상 미사용율(%)",
     "현재수익률(%)", "예상수익률(%)",
@@ -42,9 +43,11 @@ PCT_COLS = [
 def won(n):  return f"{int(n):,}원"
 def pct(r):  return f"{r * 100:.1f}%"
 
-def _fmt(df):
+def _fmt(df, skip_fmt=None):
+    _skip = set(skip_fmt or [])
     fmt = {}
     for c in df.columns:
+        if c in _skip: continue
         if c in INT_COLS:   fmt[c] = "{:,.0f}"
         elif c in PCT_COLS: fmt[c] = "{:.1f}%"
     return df.style.format(fmt, na_rep="-")
@@ -230,14 +233,12 @@ if page == "📊 종합":
     c2.metric("지급금액 합계 (액면가)",    won(tot_면가합))
     c3.metric("총 교환금액",               won(tot_교환금액))
 
-    st.caption(
-        "**확정수익** = 정산금액 − (발행수−만료수)×면가 + 수수료  "
-        "  |  **잠재수익** = 정산금액 − 교환금액 + 수수료"
-    )
     c4, c5, c6, c7 = st.columns(4)
-    c4.metric("확정수익 (만료 확정분만)",    won(tot_확정수익))
+    c4.metric("확정수익 (만료 확정분만)",    won(tot_확정수익),
+              help="정산금액 − (발행수−만료수)×면가 + 수수료")
     c5.metric("확정수익률 (면가기준)",       f"{tot_확정수익률:.1f}%")
-    c6.metric("잠재수익 (만료+미교환 포함)", won(tot_잠재수익))
+    c6.metric("잠재수익 (만료+미교환 포함)", won(tot_잠재수익),
+              help="정산금액 − 교환금액 + 수수료")
     c7.metric("잠재수익률 (면가기준)",       f"{tot_잠재수익률:.1f}%")
 
     if sel_month == "전체" and months:
@@ -266,10 +267,11 @@ if page == "📊 종합":
                 "잠재수익":        잠재,
                 "수익률_면가(%)":  round(잠재 / 면가합 * 100, 1) if 면가합 else 0,
             })
-        monthly_df = pd.DataFrame(rows)
-        _sty_m = _fmt_profit_only(monthly_df, profit_col="수익률_면가(%)", target=30)
-        _sty_m = _sty_m.format_index(lambda x: "수익률(%)" if x == "수익률_면가(%)" else x, axis=1)
-        st.dataframe(_sty_m, use_container_width=True, hide_index=True)
+        monthly_df = pd.DataFrame(rows).rename(columns={"수익률_면가(%)": "수익률(%)"})
+        st.dataframe(
+            _fmt_profit_only(monthly_df, profit_col="수익률(%)", target=30),
+            use_container_width=True, hide_index=True,
+        )
         below = [r for r in rows if r["수익률_면가(%)"] < 30]
         above = [r for r in rows if r["수익률_면가(%)"] >= 30]
         if below:
@@ -351,13 +353,9 @@ elif page == "🎁 경품":
             "확정수익_표시", "잠재수익_표시", "수익률_면가(%)", "비고"]
 
     st.caption("확정수익 = 정산금액 − (발행수−만료수)×면가 + 수수료  |  잠재수익 = 정산금액 − 교환금액 + 수수료")
-    _sty_p = _fmt(df_p[cols])
-    _sty_p = _sty_p.set_properties(
-        subset=["확정수익_표시", "잠재수익_표시"], **{"font-size": "16px"}
-    )
-    _sty_p = _sty_p.format_index(
-        lambda x: {"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"}.get(x, x), axis=1
-    )
+    _disp_p = df_p[cols].rename(columns={"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"})
+    _sty_p = _fmt(_disp_p, skip_fmt=["확정수익", "잠재수익"])
+    _sty_p = _sty_p.set_properties(subset=["확정수익", "잠재수익"], **{"font-size": "16px"})
     st.dataframe(_sty_p, use_container_width=True, hide_index=True)
 
     p_below30 = df_p[df_p["수익률_면가(%)"] < 30]
@@ -441,13 +439,9 @@ elif page == "🎟 할인쿠폰":
             "확정수익_표시", "잠재수익_표시", "수익률_면가(%)", "비고"]
 
     st.caption("확정수익 = 정산금액 − (발행수−만료수)×면가  |  잠재수익 = 정산금액 − 교환금액")
-    _sty_c = _fmt(df_c[cols])
-    _sty_c = _sty_c.set_properties(
-        subset=["확정수익_표시", "잠재수익_표시"], **{"font-size": "16px"}
-    )
-    _sty_c = _sty_c.format_index(
-        lambda x: {"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"}.get(x, x), axis=1
-    )
+    _disp_c = df_c[cols].rename(columns={"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익", "수익률_면가(%)": "수익률(%)"})
+    _sty_c = _fmt(_disp_c, skip_fmt=["확정수익", "잠재수익"])
+    _sty_c = _sty_c.set_properties(subset=["확정수익", "잠재수익"], **{"font-size": "16px"})
     st.dataframe(_sty_c, use_container_width=True, hide_index=True)
 
     c_below30 = df_c[df_c["수익률_면가(%)"] < 30]
