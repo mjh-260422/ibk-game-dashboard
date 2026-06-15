@@ -49,11 +49,13 @@ def _fmt(df):
         elif c in PCT_COLS: fmt[c] = "{:.1f}%"
     return df.style.format(fmt, na_rep="-")
 
-def _fmt_highlight(df, rate_col, threshold=1.5, profit_col=None, profit_target=30):
+def _fmt_highlight(df, rate_col, threshold=1.5, profit_col=None, profit_target=30, skip_fmt=None):
     """rate_col 기준 통계적 이상값 + profit_col 기준 목표 미달 행 색상 강조"""
+    _skip = set(skip_fmt or [])
     rates = pd.to_numeric(df[rate_col], errors='coerce').dropna()
     fmt = {}
     for c in df.columns:
+        if c in _skip: continue
         if c in INT_COLS:   fmt[c] = "{:,.0f}"
         elif c in PCT_COLS: fmt[c] = "{:.1f}%"
     styler = df.style.format(fmt, na_rep="-")
@@ -338,16 +340,16 @@ elif page == "🎁 경품":
         return "  /  ".join(parts)
 
     df_p["비고"] = df_p.apply(_prize_note, axis=1)
-    df_p["확정수익_disp"] = df_p.apply(
+    df_p["확정수익_표시"] = df_p.apply(
         lambda r: f"{int(r['확정수익']):,}원  ({r['확정수익률(%)']:.1f}%)", axis=1
     )
-    df_p["잠재수익_disp"] = df_p.apply(
+    df_p["잠재수익_표시"] = df_p.apply(
         lambda r: f"{int(r['잠재수익']):,}원  ({r['잠재수익률(%)']:.1f}%)", axis=1
     )
 
     cols = ["게임명", "상품", "게임P", "발행수", "교환수", "만료수",
             "교환율(%)", "미교환율(%)", "정산금액", "교환금액", "수수료금액",
-            "확정수익_disp", "잠재수익_disp", "수익률_면가(%)", "비고"]
+            "확정수익_표시", "잠재수익_표시", "수익률_면가(%)", "비고"]
 
     legend = []
     if std_r > 0:
@@ -355,18 +357,15 @@ elif page == "🎁 경품":
     legend.append("주황=수익률 30% 미달  ·  진한빨강=이중 위협")
     legend.append("확정수익 = 정산금액 − (발행수−만료수)×면가 + 수수료  |  잠재수익 = 정산금액 − 교환금액 + 수수료")
     st.caption("  |  ".join(legend))
-    _sty_p = _fmt_highlight(df_p[cols], "교환율(%)", profit_col="수익률_면가(%)")
+    _sty_p = _fmt_highlight(df_p[cols], "교환율(%)", profit_col="수익률_면가(%)",
+                            skip_fmt=["확정수익_표시", "잠재수익_표시"])
     _sty_p = _sty_p.set_properties(
-        subset=["확정수익_disp", "잠재수익_disp"], **{"font-size": "16px"}
+        subset=["확정수익_표시", "잠재수익_표시"], **{"font-size": "16px"}
     )
-    st.dataframe(
-        _sty_p,
-        column_config={
-            "확정수익_disp": st.column_config.TextColumn("확정수익", help="정산금액 − (발행수−만료수)×면가 + 수수료"),
-            "잠재수익_disp": st.column_config.TextColumn("잠재수익", help="정산금액 − 교환금액 + 수수료"),
-        },
-        use_container_width=True, hide_index=True,
+    _sty_p = _sty_p.format_index(
+        lambda x: {"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익"}.get(x, x), axis=1
     )
+    st.dataframe(_sty_p, use_container_width=True, hide_index=True)
 
     p_below30 = df_p[df_p["수익률_면가(%)"] < 30]
     if not p_below30.empty:
@@ -437,16 +436,16 @@ elif page == "🎟 할인쿠폰":
         return "  /  ".join(parts)
 
     df_c["비고"] = df_c.apply(_coupon_note, axis=1)
-    df_c["확정수익_disp"] = df_c.apply(
+    df_c["확정수익_표시"] = df_c.apply(
         lambda r: f"{int(r['확정수익']):,}원  ({r['확정수익률(%)']:.1f}%)", axis=1
     )
-    df_c["잠재수익_disp"] = df_c.apply(
+    df_c["잠재수익_표시"] = df_c.apply(
         lambda r: f"{int(r['잠재수익']):,}원  ({r['잠재수익률(%)']:.1f}%)", axis=1
     )
 
     cols = ["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수",
             "사용율(%)", "미사용율(%)", "정산금액", "교환금액",
-            "확정수익_disp", "잠재수익_disp", "수익률_면가(%)", "비고"]
+            "확정수익_표시", "잠재수익_표시", "수익률_면가(%)", "비고"]
 
     legend_c = []
     if std_c > 0:
@@ -454,18 +453,15 @@ elif page == "🎟 할인쿠폰":
     legend_c.append("주황=수익률 30% 미달  ·  진한빨강=이중 위협")
     legend_c.append("확정수익 = 정산금액 − (발행수−만료수)×면가  |  잠재수익 = 정산금액 − 교환금액")
     st.caption("  |  ".join(legend_c))
-    _sty_c = _fmt_highlight(df_c[cols], "사용율(%)", profit_col="수익률_면가(%)")
+    _sty_c = _fmt_highlight(df_c[cols], "사용율(%)", profit_col="수익률_면가(%)",
+                            skip_fmt=["확정수익_표시", "잠재수익_표시"])
     _sty_c = _sty_c.set_properties(
-        subset=["확정수익_disp", "잠재수익_disp"], **{"font-size": "16px"}
+        subset=["확정수익_표시", "잠재수익_표시"], **{"font-size": "16px"}
     )
-    st.dataframe(
-        _sty_c,
-        column_config={
-            "확정수익_disp": st.column_config.TextColumn("확정수익", help="정산금액 − (발행수−만료수)×면가"),
-            "잠재수익_disp": st.column_config.TextColumn("잠재수익", help="정산금액 − 교환금액"),
-        },
-        use_container_width=True, hide_index=True,
+    _sty_c = _sty_c.format_index(
+        lambda x: {"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익"}.get(x, x), axis=1
     )
+    st.dataframe(_sty_c, use_container_width=True, hide_index=True)
 
     c_below30 = df_c[df_c["수익률_면가(%)"] < 30]
     if not c_below30.empty:
