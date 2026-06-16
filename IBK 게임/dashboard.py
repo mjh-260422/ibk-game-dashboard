@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 from data_loader import load_all
@@ -157,7 +158,7 @@ with st.sidebar:
 
     page = st.radio(
         "메뉴",
-        ["📊 종합", "🎁 경품", "🎟 할인쿠폰", "📐 시뮬레이션"],
+        ["📊 종합", "🎁 경품", "🎟 할인쿠폰", "📐 시뮬레이션", "📤 보고 생성"],
         label_visibility="collapsed",
     )
 
@@ -172,7 +173,7 @@ with st.sidebar:
 
     st.caption("매체사 CSV · IBK 게임P 기준")
 
-if not data_ok:
+if not data_ok and page != "📤 보고 생성":
     st.stop()
 
 # ── 월 필터 ────────────────────────────────────────────────────────────────────
@@ -498,6 +499,112 @@ elif page == "📐 시뮬레이션":
                 st.dataframe(_fmt(cc), use_container_width=True, hide_index=True)
     else:
         st.info("아래에서 수치를 수정한 후 [📊 결과 계산] 버튼을 클릭하세요.")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 📤 보고 생성
+# ══════════════════════════════════════════════════════════════════════════════
+elif page == "📤 보고 생성":
+    import tempfile, shutil, sys, io
+    from contextlib import redirect_stdout
+
+    st.title("📤 보고 생성")
+    st.caption("데이터 파일 3개 업로드 후 [보고 생성] 버튼 클릭 → 구글시트 자동 업데이트")
+    st.divider()
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**① 로우데이터**")
+        st.caption("CP > 게이미피케이션 > 결과 관리 > 엑셀 다운로드")
+        raw_files = st.file_uploader(
+            "로우데이터", accept_multiple_files=True,
+            type=["xlsx", "xls"], label_visibility="collapsed", key="up_raw"
+        )
+    with col2:
+        st.markdown("**② 할인쿠폰**")
+        st.caption("CRAS > 이벤트관리 > 기프트샵 할인쿠폰 발행 > 엑셀/CSV 다운로드")
+        coupon_files = st.file_uploader(
+            "할인쿠폰", accept_multiple_files=True,
+            type=["xlsx", "xls", "csv"], label_visibility="collapsed", key="up_coupon"
+        )
+    with col3:
+        st.markdown("**③ 매체사 경품**")
+        st.caption("CRAS > 정산관리 > 매체사(IBK기프트샵) > 엑셀/CSV 다운로드")
+        prize_files = st.file_uploader(
+            "매체사 경품", accept_multiple_files=True,
+            type=["xlsx", "xls", "csv"], label_visibility="collapsed", key="up_prize"
+        )
+
+    st.divider()
+    all_uploaded = bool(raw_files and coupon_files and prize_files)
+    if not all_uploaded:
+        st.info("파일 3개를 모두 업로드하면 버튼이 활성화됩니다.")
+
+    if st.button("📊 보고 생성", type="primary", disabled=not all_uploaded, use_container_width=True):
+        log_box = st.empty()
+        log_lines = []
+
+        def log(msg):
+            log_lines.append(msg)
+            log_box.code("\n".join(log_lines))
+
+        try:
+            log("📁 파일 저장 중...")
+            tmpdir = tempfile.mkdtemp()
+
+            def save_uploads(files):
+                paths = []
+                for f in files:
+                    p = os.path.join(tmpdir, f.name)
+                    with open(p, "wb") as fp:
+                        fp.write(f.read())
+                    paths.append(p)
+                return paths
+
+            raw_paths    = save_uploads(raw_files)
+            coupon_paths = save_uploads(coupon_files)
+            prize_paths  = save_uploads(prize_files)
+            log(f"  로우데이터 {len(raw_paths)}개 / 할인쿠폰 {len(coupon_paths)}개 / 매체사경품 {len(prize_paths)}개")
+
+            log("📊 데이터 로드 및 필터링 중...")
+            buf = io.StringIO()
+            import report_generator as rg
+            with redirect_stdout(buf):
+                raw_df,    rcols = rg.load_raw(raw_paths)
+                coupon_df_up, ccols = rg.load_coupon(coupon_paths)
+                prize_df_up,  pcols = rg.load_prize_csv(prize_paths)
+            for line in buf.getvalue().strip().splitlines():
+                log(f"  {line.strip()}")
+
+            log("🔑 구글시트 연결 중...")
+            from google.oauth2.service_account import Credentials
+            from googleapiclient.discovery import build as gbuild
+            WRITE_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+            try:
+                info = dict(st.secrets["gcp_service_account"])
+                creds = Credentials.from_service_account_info(info, scopes=WRITE_SCOPES)
+            except Exception:
+                creds = Credentials.from_service_account_file(
+                    r"C:\Users\jihye\.claude\google-sheets-key.json", scopes=WRITE_SCOPES
+                )
+            svc = gbuild("sheets", "v4", credentials=creds)
+
+            log("✍️ 구글시트 업데이트 중... (1~2분 소요)")
+            buf2 = io.StringIO()
+            with redirect_stdout(buf2):
+                rg.run_full(raw_df, rcols, coupon_df_up, ccols, prize_df_up, pcols, svc)
+            for line in buf2.getvalue().strip().splitlines():
+                log(f"  {line.strip()}")
+
+            shutil.rmtree(tmpdir, ignore_errors=True)
+            log("✅ 완료!")
+            st.success("보고 생성 완료! 다른 탭에서 최신 데이터를 확인하세요.")
+            st.cache_data.clear()
+
+        except Exception as e:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+            log(f"❌ 오류: {e}")
+            st.error(f"오류 발생: {e}")
 
     # ── 교환율 조정 입력 (하단) ─────────────────────────────────────────────────
     st.divider()
