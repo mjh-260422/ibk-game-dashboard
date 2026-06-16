@@ -507,9 +507,10 @@ elif page == "📐 시뮬레이션":
 elif page == "📤 보고 생성":
     import tempfile, shutil, sys, io
     from contextlib import redirect_stdout
+    import report_generator as rg
 
     st.title("📤 보고 생성")
-    st.caption("데이터 파일 3개 업로드 후 [보고 생성] 버튼 클릭 → 구글시트 자동 업데이트")
+    st.caption("파일을 아래에 드래그하면 종류를 자동으로 인식합니다")
     st.divider()
 
     run_mode = st.radio(
@@ -523,35 +524,52 @@ elif page == "📤 보고 생성":
     )
     st.divider()
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("**① 로우데이터**")
-        st.caption("CP > 게이미피케이션 > 결과 관리 > 엑셀 다운로드")
-        raw_files = st.file_uploader(
-            "로우데이터", accept_multiple_files=True,
-            type=["xlsx", "xls"], label_visibility="collapsed", key="up_raw"
-        )
-    with col2:
-        st.markdown("**② 할인쿠폰**")
-        st.caption("CRAS > 이벤트관리 > 기프트샵 할인쿠폰 발행 > 엑셀/CSV 다운로드")
-        coupon_files = st.file_uploader(
-            "할인쿠폰", accept_multiple_files=True,
-            type=["xlsx", "xls", "csv"], label_visibility="collapsed", key="up_coupon"
-        )
-    with col3:
-        st.markdown("**③ 매체사 경품**")
-        st.caption("CRAS > 정산관리 > 매체사(IBK기프트샵) > 엑셀/CSV 다운로드")
-        prize_files = st.file_uploader(
-            "매체사 경품", accept_multiple_files=True,
-            type=["xlsx", "xls", "csv"], label_visibility="collapsed", key="up_prize"
-        )
+    uploaded = st.file_uploader(
+        "파일 드래그 (로우데이터 · 할인쿠폰 · 매체사경품 동시 가능)",
+        accept_multiple_files=True,
+        type=["xlsx", "xls", "csv"],
+    )
 
-    st.divider()
-    all_uploaded = bool(raw_files and coupon_files and prize_files)
-    if not all_uploaded:
-        st.info("파일 3개를 모두 업로드하면 버튼이 활성화됩니다.")
+    raw_paths, coupon_paths, prize_paths = [], [], []
+    unknown_files = []
+    _tmpdir = None
 
-    if st.button("📊 보고 생성", type="primary", disabled=not all_uploaded, use_container_width=True):
+    if uploaded:
+        _tmpdir = tempfile.mkdtemp()
+        for f in uploaded:
+            p = os.path.join(_tmpdir, f.name)
+            with open(p, "wb") as fp:
+                fp.write(f.read())
+            kind = rg.detect_file_type(p)
+            if kind == "raw":
+                raw_paths.append(p)
+            elif kind == "coupon":
+                coupon_paths.append(p)
+            elif kind == "prize":
+                prize_paths.append(p)
+            else:
+                unknown_files.append(f.name)
+
+        KIND_LABEL = {"raw": "📋 로우데이터", "coupon": "🎟 할인쿠폰", "prize": "🎁 매체사경품"}
+        rows = []
+        for f in uploaded:
+            p = os.path.join(_tmpdir, f.name)
+            k = rg.detect_file_type(p)
+            rows.append({"파일명": f.name, "인식 결과": KIND_LABEL.get(k, "❓ 인식 불가")})
+        st.table(rows)
+
+        if unknown_files:
+            st.warning(f"자동 인식 불가 파일: {', '.join(unknown_files)}\n\n해당 파일은 처리에서 제외됩니다.")
+
+    all_ready = bool(raw_paths and coupon_paths and prize_paths)
+    if uploaded and not all_ready:
+        missing = []
+        if not raw_paths:    missing.append("로우데이터")
+        if not coupon_paths: missing.append("할인쿠폰")
+        if not prize_paths:  missing.append("매체사경품")
+        st.info(f"아직 인식되지 않은 파일 종류: {', '.join(missing)}")
+
+    if st.button("📊 보고 생성", type="primary", disabled=not all_ready, use_container_width=True):
         log_box = st.empty()
         log_lines = []
 
@@ -560,26 +578,10 @@ elif page == "📤 보고 생성":
             log_box.code("\n".join(log_lines))
 
         try:
-            log("📁 파일 저장 중...")
-            tmpdir = tempfile.mkdtemp()
-
-            def save_uploads(files):
-                paths = []
-                for f in files:
-                    p = os.path.join(tmpdir, f.name)
-                    with open(p, "wb") as fp:
-                        fp.write(f.read())
-                    paths.append(p)
-                return paths
-
-            raw_paths    = save_uploads(raw_files)
-            coupon_paths = save_uploads(coupon_files)
-            prize_paths  = save_uploads(prize_files)
             log(f"  로우데이터 {len(raw_paths)}개 / 할인쿠폰 {len(coupon_paths)}개 / 매체사경품 {len(prize_paths)}개")
 
             log("📊 데이터 로드 및 필터링 중...")
             buf = io.StringIO()
-            import report_generator as rg
             with redirect_stdout(buf):
                 raw_df,    rcols = rg.load_raw(raw_paths)
                 coupon_df_up, ccols = rg.load_coupon(coupon_paths)
@@ -611,13 +613,13 @@ elif page == "📤 보고 생성":
             for line in buf2.getvalue().strip().splitlines():
                 log(f"  {line.strip()}")
 
-            shutil.rmtree(tmpdir, ignore_errors=True)
+            shutil.rmtree(_tmpdir, ignore_errors=True)
             log("✅ 완료!")
             st.success("보고 생성 완료! 다른 탭에서 최신 데이터를 확인하세요.")
             st.cache_data.clear()
 
         except Exception as e:
-            shutil.rmtree(tmpdir, ignore_errors=True)
+            shutil.rmtree(_tmpdir, ignore_errors=True)
             log(f"❌ 오류: {e}")
             st.error(f"오류 발생: {e}")
 
