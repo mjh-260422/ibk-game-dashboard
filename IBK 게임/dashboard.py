@@ -258,20 +258,6 @@ def _render_report(rows):
 def get_data():
     return load_all()
 
-# ── 접근 권한 ──────────────────────────────────────────────────────────────────
-try:
-    _user_email = st.experimental_user.email or ""
-except Exception:
-    _user_email = ""
-
-try:
-    _generators = list(st.secrets.get("access", {}).get("generators", []))
-except Exception:
-    _generators = []
-
-# secrets에 generators 목록이 없으면(로컬 개발 등) 모두 허용
-can_generate = (not _generators) or (_user_email in _generators)
-
 with st.spinner("Google Sheets에서 데이터 불러오는 중..."):
     try:
         prize_df, coupon_df, monthly_p, monthly_c, months, loaded_at = get_data()
@@ -285,12 +271,30 @@ with st.spinner("Google Sheets에서 데이터 불러오는 중..."):
         loaded_at = "-"
 
 # ── 사이드바 ────────────────────────────────────────────────────────────────────
+try:
+    _required_pw = st.secrets.get("access", {}).get("password", "")
+except Exception:
+    _required_pw = ""
+
+if "can_generate" not in st.session_state:
+    st.session_state.can_generate = not _required_pw  # 비밀번호 미설정 시 전체 허용
+
 with st.sidebar:
     st.markdown("### 🎮 IBK 게임")
     st.caption(f"업데이트: {loaded_at}")
-    if _user_email:
-        st.caption(f"👤 {_user_email}")
     st.divider()
+
+    if _required_pw and not st.session_state.can_generate:
+        with st.expander("🔐 보고 생성 잠금 해제"):
+            _pw_input = st.text_input("비밀번호", type="password", key="pw_input")
+            if st.button("확인"):
+                if _pw_input == _required_pw:
+                    st.session_state.can_generate = True
+                    st.rerun()
+                else:
+                    st.error("비밀번호가 틀렸습니다.")
+
+    can_generate = st.session_state.can_generate
 
     _menu = ["📊 종합", "🎁 경품", "🎟 할인쿠폰", "📐 시뮬레이션"]
     if can_generate:
