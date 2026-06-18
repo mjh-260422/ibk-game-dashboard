@@ -191,8 +191,16 @@ def _render_report(rows):
         body = data_rows[1:]
         n = len(header)
         padded = [(r + [''] * n)[:n] for r in body]
-        df = pd.DataFrame(padded, columns=header)
-        st.table(df.style.hide(axis='index'))
+        th = 'style="color:#1e293b;font-weight:700;background:#f1f5f9;padding:8px 14px;border-bottom:2px solid #cbd5e1;text-align:left;font-size:13px;"'
+        td = 'style="padding:7px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;"'
+        html = '<table style="width:100%;border-collapse:collapse;">'
+        html += '<thead><tr>' + ''.join(f'<th {th}>{h}</th>' for h in header) + '</tr></thead>'
+        html += '<tbody>'
+        for i, row in enumerate(padded):
+            bg = '#ffffff' if i % 2 == 0 else '#f8fafc'
+            html += f'<tr style="background:{bg}">' + ''.join(f'<td {td}>{c}</td>' for c in row) + '</tr>'
+        html += '</tbody></table>'
+        st.markdown(html, unsafe_allow_html=True)
 
     # ── 빈 행 기준으로 블록 분리
     blocks, cur = [], []
