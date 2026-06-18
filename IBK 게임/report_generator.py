@@ -1925,7 +1925,18 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
 
 
 def detect_file_type(path):
-    """파일 헤더 컬럼으로 종류 자동 판별 → 'raw' | 'prize' | 'coupon' | None"""
+    """파일 헤더 컬럼으로 종류 자동 판별 → 'raw' | 'prize' | 'coupon' | None
+    컬럼 인식 실패 시 파일명으로 폴백."""
+    fname = os.path.basename(path)
+    # 파일명 기반 힌트
+    name_hint = None
+    if '할인쿠폰' in fname:
+        name_hint = 'coupon'
+    elif '게임결과' in fname:
+        name_hint = 'raw'
+    elif '매체사' in fname:
+        name_hint = 'prize'
+
     try:
         ext = os.path.splitext(path)[1].lower()
         if ext in ('.xlsx', '.xls'):
@@ -1939,20 +1950,20 @@ def detect_file_type(path):
                 except Exception:
                     continue
         if df is None:
-            return None
+            return name_hint
         cols = ' '.join(str(c) for c in df.columns)
         # 매체사경품: B2B2C_TR_ID 또는 핀상태+공급가격
         if 'B2B2C_TR_ID' in cols or ('핀상태' in cols and '공급가격' in cols):
             return 'prize'
-        # 할인쿠폰: 쿠폰명 + 핀번호 (로우데이터에는 없음)
-        if '쿠폰명' in cols and ('핀번호' in cols or '발행일자' in cols or '생성일' in cols):
+        # 할인쿠폰: 쿠폰명 + (핀번호|발행일자|생성일|쿠폰ID)
+        if '쿠폰명' in cols and any(k in cols for k in ('핀번호', '발행일자', '생성일', '쿠폰ID')):
             return 'coupon'
-        # 로우데이터: 게임명 + 게임 실행일 또는 차감 포인트
-        if '게임명' in cols and ('게임 실행일' in cols or '차감 포인트' in cols):
+        # 로우데이터: 게임명 + (게임 실행일|차감 포인트|게임결과)
+        if '게임명' in cols and any(k in cols for k in ('게임 실행일', '차감 포인트', '게임결과', '게임 결과')):
             return 'raw'
-        return None
+        return name_hint
     except Exception:
-        return None
+        return name_hint
 
 
 def parse_path_line(line):
