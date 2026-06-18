@@ -1237,6 +1237,8 @@ def write_internal_report(service):
         r('', label)
         r('', '경품명', '교환처', '발행(건)', '사용(건)', '기간만료(건)', '사용률', '당첨확률')
         for p, v, issued, used, expired in sorted(items, key=lambda x: -x[2]):
+            if issued == 0:
+                continue
             ur = f'{used/issued*100:.1f}%' if issued else '0%'
             wr = f'{issued/total_i*100:.1f}%' if total_i else '0%'
             r('', p, v, f'{issued:,}', f'{used:,}', f'{expired:,}', ur, wr)
@@ -1254,7 +1256,9 @@ def write_internal_report(service):
         for _, row in coupons_df.iterrows():
             cn = str(row.get('쿠폰명', '')); gn = str(row.get('게임명', ''))
             ci = int(str(row.get('발행수', 0) or 0)); cu = int(str(row.get('사용수', 0) or 0))
-            r('', cn, f'{ci:,}', f'{cu:,}', f'{cu/ci*100:.1f}%' if ci else '0%')
+            if ci == 0:
+                continue
+            r('', cn, f'{ci:,}', f'{cu:,}', f'{cu/ci*100:.1f}%')
             c_ti += ci; c_tu += cu
             if gn not in game_coupon_ir: game_coupon_ir[gn] = []
             game_coupon_ir[gn].append((cn, ci, cu))
@@ -1264,7 +1268,9 @@ def write_internal_report(service):
     r('', '게임명', '발행(건)', '사용(건)', '사용률')
     for gn in sorted(game_coupon_ir):
         gi = sum(x[1] for x in game_coupon_ir[gn]); gu = sum(x[2] for x in game_coupon_ir[gn])
-        r('', gn, f'{gi:,}', f'{gu:,}', f'{gu/gi*100:.1f}%' if gi else '0%')
+        if gi == 0:
+            continue
+        r('', gn, f'{gi:,}', f'{gu:,}', f'{gu/gi*100:.1f}%')
     empty()
 
     r('', '게임별 월 실행수')
@@ -1330,7 +1336,9 @@ def write_internal_report(service):
             ca  = int(str(row.get('할인쿠폰총액', 0) or 0))
             pi  = int(str(row.get('경품발행', 0) or 0))
             pa  = int(str(row.get('경품총액', 0) or 0))
-            r('', d, wd, f'{pts:,}', f'{ben:,}', ci, f'{ca:,}', pi, f'{pa:,}')
+            if pts == 0 and ben == 0 and ci == 0 and pi == 0:
+                continue
+            r('', d, wd, f'{pts:,}', f'{ben:,}', f'{ci:,}', f'{ca:,}', f'{pi:,}', f'{pa:,}')
             d_tot['pts'] += pts; d_tot['ben'] += ben; d_tot['ci'] += ci
             d_tot['ca'] += ca;  d_tot['pi'] += pi;   d_tot['pa'] += pa
             try: mk = d[:4] + '.' + d[5:7]
@@ -1341,7 +1349,7 @@ def write_internal_report(service):
                 m_tot[mk]['ca']  += ca;  m_tot[mk]['pi']  += pi;  m_tot[mk]['pa']  += pa
     empty()
     r('', '합계', '', f'{d_tot["pts"]:,}', f'{d_tot["ben"]:,}',
-      d_tot["ci"], f'{d_tot["ca"]:,}', d_tot["pi"], f'{d_tot["pa"]:,}')
+      f'{d_tot["ci"]:,}', f'{d_tot["ca"]:,}', f'{d_tot["pi"]:,}', f'{d_tot["pa"]:,}')
     empty()
 
     r('', '월별 합계')
@@ -1350,7 +1358,7 @@ def write_internal_report(service):
         d = m_tot[mk]
         try: y, mo = mk.split('.'); mk_lbl = f'{y}년 {mo}월'
         except: mk_lbl = mk
-        r('', mk_lbl, '', f'{d["pts"]:,}', f'{d["ben"]:,}', d["ci"], f'{d["ca"]:,}', d["pi"], f'{d["pa"]:,}')
+        r('', mk_lbl, '', f'{d["pts"]:,}', f'{d["ben"]:,}', f'{d["ci"]:,}', f'{d["ca"]:,}', f'{d["pi"]:,}', f'{d["pa"]:,}')
 
     write_sheet(service, '내부보고', rows)
     print('  내부보고 완료')
