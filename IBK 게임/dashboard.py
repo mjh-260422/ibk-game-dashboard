@@ -187,9 +187,10 @@ def _render_report(rows):
 
     def render_table(data_rows):
         """첫 행을 헤더로 사용하는 일반 테이블"""
-        header = dedup_cols(data_rows[0])
         body = data_rows[1:]
-        n = len(header)
+        # 헤더보다 데이터 행이 넓을 수 있으므로 최대 열 수 기준으로 맞춤
+        n = max(len(data_rows[0]), max((len(r) for r in body), default=0))
+        header = dedup_cols(data_rows[0] + [''] * (n - len(data_rows[0])))
         padded = [(r + [''] * n)[:n] for r in body]
         th = 'style="color:#1e293b;font-weight:700;background:#f1f5f9;padding:8px 14px;border-bottom:2px solid #cbd5e1;text-align:left;font-size:13px;"'
         td = 'style="padding:7px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;"'
@@ -244,6 +245,17 @@ def _render_report(rows):
         if len(data_rows) == 1:
             # 단일 행: 텍스트로 표시
             st.text('   |   '.join(c for c in data_rows[0] if c.strip()))
+        elif len(data_rows[0]) == 1:
+            # 첫 행이 1셀 → 서브 레이블 (게임명 등), 나머지 별도 렌더링
+            st.markdown(f"**{data_rows[0][0]}**")
+            sub = data_rows[1:]
+            if sub:
+                if len(sub) == 1:
+                    st.text('   |   '.join(c for c in sub[0] if c.strip()))
+                elif is_header(sub[0]):
+                    render_table(sub)
+                else:
+                    render_kv(sub)
         elif is_header(data_rows[0]):
             # 헤더 행 + 데이터 행 → 일반 테이블
             render_table(data_rows)
