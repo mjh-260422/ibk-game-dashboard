@@ -243,6 +243,20 @@ def _render_report(rows):
 def get_data():
     return load_all()
 
+# ── 접근 권한 ──────────────────────────────────────────────────────────────────
+try:
+    _user_email = st.experimental_user.email or ""
+except Exception:
+    _user_email = ""
+
+try:
+    _generators = list(st.secrets.get("access", {}).get("generators", []))
+except Exception:
+    _generators = []
+
+# secrets에 generators 목록이 없으면(로컬 개발 등) 모두 허용
+can_generate = (not _generators) or (_user_email in _generators)
+
 with st.spinner("Google Sheets에서 데이터 불러오는 중..."):
     try:
         prize_df, coupon_df, monthly_p, monthly_c, months, loaded_at = get_data()
@@ -259,11 +273,18 @@ with st.spinner("Google Sheets에서 데이터 불러오는 중..."):
 with st.sidebar:
     st.markdown("### 🎮 IBK 게임")
     st.caption(f"업데이트: {loaded_at}")
+    if _user_email:
+        st.caption(f"👤 {_user_email}")
     st.divider()
+
+    _menu = ["📊 종합", "🎁 경품", "🎟 할인쿠폰", "📐 시뮬레이션"]
+    if can_generate:
+        _menu.append("📤 보고 생성")
+    _menu += ["📋 내부보고", "📄 외부보고", "📸 스냅샷", "❓ 사용 가이드"]
 
     page = st.radio(
         "메뉴",
-        ["📊 종합", "🎁 경품", "🎟 할인쿠폰", "📐 시뮬레이션", "📤 보고 생성", "📋 내부보고", "📄 외부보고", "📸 스냅샷", "❓ 사용 가이드"],
+        _menu,
         label_visibility="collapsed",
     )
 
@@ -699,6 +720,9 @@ elif page == "📐 시뮬레이션":
 # 📤 보고 생성
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "📤 보고 생성":
+    if not can_generate:
+        st.error("보고 생성 권한이 없습니다.")
+        st.stop()
     import tempfile, shutil, sys, io
     from contextlib import redirect_stdout
     import report_generator as rg
