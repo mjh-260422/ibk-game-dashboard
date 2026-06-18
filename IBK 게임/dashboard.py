@@ -142,12 +142,52 @@ def _get_report_rows(sheet_name):
         return []
 
 def _render_report(rows):
+    import re
+    _PURE_NUM = re.compile(r'^-?[\d,]+$')  # 순수 정수(콤마 포함) → 헤더 아님
+
     def clean(row):
         r = list(row[1:]) if len(row) > 1 else []
         while r and str(r[-1]).strip() == '':
             r.pop()
         return [str(c) for c in r]
 
+    def dedup_cols(cols):
+        seen: dict = {}
+        out = []
+        for c in cols:
+            if c in seen:
+                seen[c] += 1
+                out.append(f"{c}_{seen[c]}")
+            else:
+                seen[c] = 0
+                out.append(c)
+        return out
+
+    def is_header(row):
+        """첫 행에 순수 정수값이 없으면 헤더로 판단"""
+        return not any(_PURE_NUM.match(c.strip()) for c in row if c.strip())
+
+    def render_kv(data_rows):
+        """레이블-값 쌍 형태 행을 metric 카드로 표시"""
+        for row in data_rows:
+            pairs = [(row[i], row[i + 1] if i + 1 < len(row) else '')
+                     for i in range(0, len(row), 2)]
+            pairs = [(l, v) for l, v in pairs if l.strip()]
+            if pairs:
+                cols = st.columns(len(pairs))
+                for col, (label, val) in zip(cols, pairs):
+                    col.metric(label=label, value=val)
+
+    def render_table(data_rows):
+        """첫 행을 헤더로 사용하는 일반 테이블"""
+        header = dedup_cols(data_rows[0])
+        body = data_rows[1:]
+        n = len(header)
+        padded = [(r + [''] * n)[:n] for r in body]
+        df = pd.DataFrame(padded, columns=header)
+        st.dataframe(df, hide_index=True, use_container_width=True)
+
+    # ── 빈 행 기준으로 블록 분리
     blocks, cur = [], []
     for row in rows:
         c = clean(row)
@@ -164,6 +204,7 @@ def _render_report(rows):
         st.info("시트 데이터가 없습니다. 먼저 보고를 생성해주세요.")
         return
 
+    # 첫 블록 = 제목/부제
     if blocks[0]:
         st.markdown(f"## {blocks[0][0][0]}")
         if len(blocks[0]) > 1:
@@ -174,6 +215,8 @@ def _render_report(rows):
     for block in blocks[1:]:
         if not block:
             continue
+
+        # 섹션 헤더: 첫 행이 셀 1개
         if len(block[0]) == 1:
             st.markdown(f"#### {block[0][0]}")
             data_rows = block[1:]
@@ -184,25 +227,14 @@ def _render_report(rows):
             continue
 
         if len(data_rows) == 1:
-            st.text('   |   '.join(c for c in data_rows[0] if str(c).strip()))
+            # 단일 행: 텍스트로 표시
+            st.text('   |   '.join(c for c in data_rows[0] if c.strip()))
+        elif is_header(data_rows[0]):
+            # 헤더 행 + 데이터 행 → 일반 테이블
+            render_table(data_rows)
         else:
-            header = data_rows[0]
-            body = data_rows[1:]
-            n = len(header)
-            padded = [(r + [''] * n)[:n] for r in body]
-            # 중복 컬럼명 제거
-            seen: dict = {}
-            deduped = []
-            for col in header:
-                k = str(col)
-                if k in seen:
-                    seen[k] += 1
-                    deduped.append(f"{k}_{seen[k]}" if k else f"_{seen[k]}")
-                else:
-                    seen[k] = 0
-                    deduped.append(k)
-            df = pd.DataFrame(padded, columns=deduped)
-            st.dataframe(df, hide_index=True, use_container_width=True)
+            # 레이블-값 쌍 형태 → metric 카드
+            render_kv(data_rows)
 
         st.write('')
 
