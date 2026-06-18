@@ -20,6 +20,13 @@ div[data-testid="stRadio"] label {
     cursor:pointer; width:100%;
 }
 div[data-testid="stRadio"] label:hover { background:#e2e8f0; }
+/* 보고 테이블 헤더 */
+[data-testid="stTable"] thead th {
+    color: #1e293b !important;
+    font-weight: 700 !important;
+    background: #f1f5f9;
+    font-size: 13px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -185,7 +192,7 @@ def _render_report(rows):
         n = len(header)
         padded = [(r + [''] * n)[:n] for r in body]
         df = pd.DataFrame(padded, columns=header)
-        st.dataframe(df, hide_index=True, use_container_width=True)
+        st.table(df.style.hide(axis='index'))
 
     # ── 빈 행 기준으로 블록 분리
     blocks, cur = [], []
