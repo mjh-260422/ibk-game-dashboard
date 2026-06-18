@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import pandas as pd
-from data_loader import load_all, load_report_sheet
+from data_loader import load_all, load_report_sheet, list_snapshot_sheets
 
 st.set_page_config(page_title="IBK 게임 수익 대시보드", page_icon="🎮", layout="wide")
 
@@ -263,7 +263,7 @@ with st.sidebar:
 
     page = st.radio(
         "메뉴",
-        ["📊 종합", "🎁 경품", "🎟 할인쿠폰", "📐 시뮬레이션", "📤 보고 생성", "📋 내부보고", "📄 외부보고", "❓ 사용 가이드"],
+        ["📊 종합", "🎁 경품", "🎟 할인쿠폰", "📐 시뮬레이션", "📤 보고 생성", "📋 내부보고", "📄 외부보고", "📸 스냅샷", "❓ 사용 가이드"],
         label_visibility="collapsed",
     )
 
@@ -278,7 +278,7 @@ with st.sidebar:
 
     st.caption("매체사 CSV · IBK 게임P 기준")
 
-if not data_ok and page not in ("📤 보고 생성", "📋 내부보고", "📄 외부보고"):
+if not data_ok and page not in ("📤 보고 생성", "📋 내부보고", "📄 외부보고", "📸 스냅샷"):
     st.stop()
 
 # ── 월 필터 ────────────────────────────────────────────────────────────────────
@@ -836,6 +836,38 @@ elif page == "📄 외부보고":
         st.rerun()
     rows = _get_report_rows("외부보고")
     _render_report(rows)
+
+elif page == "📸 스냅샷":
+    st.title("📸 스냅샷")
+
+    @st.cache_data(ttl=60)
+    def _get_snapshot_list():
+        try:
+            return list_snapshot_sheets()
+        except Exception:
+            return []
+
+    snapshots = _get_snapshot_list()
+    if not snapshots:
+        st.info("저장된 스냅샷이 없습니다. 보고 생성 시 자동으로 저장됩니다.")
+    else:
+        def _fmt_snap(name):
+            d = name.replace("스냅샷_", "")
+            try:
+                return f"{d[:4]}.{d[4:6]}.{d[6:]}"
+            except Exception:
+                return d
+
+        labels = {_fmt_snap(s): s for s in snapshots}
+        selected_label = st.selectbox("날짜 선택", list(labels.keys()))
+        selected_sheet = labels[selected_label]
+
+        if st.button("🔄 새로고침", key="refresh_snap"):
+            st.cache_data.clear()
+            st.rerun()
+
+        rows = _get_report_rows(selected_sheet)
+        _render_report(rows)
 
 elif page == "❓ 사용 가이드":
     st.title("❓ 사용 가이드")

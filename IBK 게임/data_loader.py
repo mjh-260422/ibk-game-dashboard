@@ -217,6 +217,15 @@ def _last_data_date(last_month_str):
         return last_month_str
 
 
+def list_snapshot_sheets():
+    """스냅샷_YYYYMMDD 시트 목록 반환 (최신순)"""
+    svc = _get_service()
+    meta = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+    names = [s['properties']['title'] for s in meta.get('sheets', [])
+             if s['properties']['title'].startswith('스냅샷_')]
+    return sorted(names, reverse=True)
+
+
 def load_report_sheet(sheet_name):
     """보고 시트 행 반환 (서식값 그대로, 내부보고/외부보고 등)."""
     svc = _get_service()

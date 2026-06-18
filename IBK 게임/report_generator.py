@@ -1354,6 +1354,18 @@ def write_internal_report(service):
 
     write_sheet(service, '내부보고', rows)
     print('  내부보고 완료')
+    _save_snapshot(service, rows)
+
+
+def _save_snapshot(service, rows):
+    """내부보고 내용을 날짜별 스냅샷 시트에 저장"""
+    from datetime import date as _d
+    snap = f'스냅샷_{_d.today().strftime("%Y%m%d")}'
+    try:
+        write_sheet(service, snap, rows)
+        print(f'  스냅샷 저장: {snap}')
+    except Exception as e:
+        print(f'  스냅샷 저장 실패: {e}')
 
 
 def run_full(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
