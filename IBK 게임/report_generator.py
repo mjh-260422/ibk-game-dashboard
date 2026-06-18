@@ -1267,6 +1267,25 @@ def write_internal_report(service):
         r('', gn, f'{gi:,}', f'{gu:,}', f'{gu/gi*100:.1f}%' if gi else '0%')
     empty()
 
+    r('', '게임별 월 실행수')
+    if not gmu_df.empty and '게임명' in gmu_df.columns:
+        months_gmu = sorted(gmu_df['월'].dropna().unique().tolist())
+        r('', '게임명', *months_gmu, '합계')
+        gmu_run_data = {}
+        for _, row in gmu_df.iterrows():
+            g = str(row.get('게임명', '')); mk = str(row.get('월', ''))
+            cnt = int(str(row.get('실행수', 0) or 0))
+            if g and mk:
+                if g not in gmu_run_data: gmu_run_data[g] = {}
+                gmu_run_data[g][mk] = cnt
+        month_sum_run = {mk: 0 for mk in months_gmu}
+        for g in sorted(gmu_run_data):
+            vals = [gmu_run_data[g].get(mk, 0) for mk in months_gmu]
+            for mk, v in zip(months_gmu, vals): month_sum_run[mk] += v
+            r('', g, *[f'{v:,}' for v in vals], f'{sum(vals):,}')
+        r('', '합계', *[f'{month_sum_run[mk]:,}' for mk in months_gmu], f'{sum(month_sum_run.values()):,}')
+    empty()
+
     r('', '게임별 월 참여자수')
     if not gmu_df.empty and '게임명' in gmu_df.columns:
         months_gmu = sorted(gmu_df['월'].dropna().unique().tolist())
@@ -1500,21 +1519,30 @@ def run_full(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
     write_sheet(service, '집계_유저_월별', mu_rows)
     print('  집계_유저_월별 완료')
 
-    # 게임별 월별 참여자 저장
+    # 게임별 월별 참여자/실행수 저장
     gm_user_map = {}
-    if rcols['gameName'] and rcols['userId'] and rcols['gameDate']:
+    gm_run_map = {}
+    if rcols['gameName'] and rcols['gameDate']:
         for _, row in raw_df.iterrows():
             g  = str(row.get(rcols['gameName'], '')).strip()
-            u  = str(row.get(rcols['userId'], '')).strip()
             mk = fmt_month(row.get(rcols['gameDate'], ''))
-            if not g or g == 'nan' or not u or u == 'nan' or not mk: continue
-            if g not in gm_user_map: gm_user_map[g] = {}
-            if mk not in gm_user_map[g]: gm_user_map[g][mk] = set()
-            gm_user_map[g][mk].add(u)
-    gm_rows = [['게임명', '월', '참여자수']]
-    for g in sorted(gm_user_map):
-        for mk in sorted(gm_user_map[g]):
-            gm_rows.append([g, mk, len(gm_user_map[g][mk])])
+            if not g or g == 'nan' or not mk: continue
+            if g not in gm_run_map: gm_run_map[g] = {}
+            gm_run_map[g][mk] = gm_run_map[g].get(mk, 0) + 1
+            if rcols['userId']:
+                u = str(row.get(rcols['userId'], '')).strip()
+                if u and u != 'nan':
+                    if g not in gm_user_map: gm_user_map[g] = {}
+                    if mk not in gm_user_map[g]: gm_user_map[g][mk] = set()
+                    gm_user_map[g][mk].add(u)
+    all_games = sorted(set(list(gm_user_map.keys()) + list(gm_run_map.keys())))
+    gm_rows = [['게임명', '월', '참여자수', '실행수']]
+    for g in all_games:
+        all_months = sorted(set(list(gm_user_map.get(g, {}).keys()) + list(gm_run_map.get(g, {}).keys())))
+        for mk in all_months:
+            participants = len(gm_user_map.get(g, {}).get(mk, set()))
+            runs = gm_run_map.get(g, {}).get(mk, 0)
+            gm_rows.append([g, mk, participants, runs])
     write_sheet(service, '집계_게임_월별', gm_rows)
     print('  집계_게임_월별 완료')
 
@@ -1773,34 +1801,47 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
     write_sheet(service, '집계_월별', m_rows)
     print('  집계_월별 업데이트')
 
-    # 게임별 월별 참여자 업데이트
+    # 게임별 월별 참여자/실행수 업데이트
     existing_gmu = read_sheet(service, '집계_게임_월별')
     gmu_map = {}
+    grun_map = {}
     if not existing_gmu.empty and '게임명' in existing_gmu.columns:
         for _, row in existing_gmu.iterrows():
             g = str(row.get('게임명', '')); mk = str(row.get('월', ''))
-            cnt = int(str(row.get('참여자수', 0) or 0))
-            if g and mk:
-                if g not in gmu_map: gmu_map[g] = {}
-                gmu_map[g][mk] = cnt
+            if not g or not mk: continue
+            if g not in gmu_map: gmu_map[g] = {}
+            if g not in grun_map: grun_map[g] = {}
+            gmu_map[g][mk] = int(str(row.get('참여자수', 0) or 0))
+            grun_map[g][mk] = int(str(row.get('실행수', 0) or 0))
     new_gmu_sets = {}
-    if rcols['gameName'] and rcols['userId'] and rcols['gameDate']:
+    new_grun_map = {}
+    if rcols['gameName'] and rcols['gameDate']:
         for _, row in raw_df.iterrows():
             g  = str(row.get(rcols['gameName'], '')).strip()
-            u  = str(row.get(rcols['userId'], '')).strip()
             mk = fmt_month(row.get(rcols['gameDate'], ''))
-            if not g or g == 'nan' or not u or u == 'nan' or not mk: continue
-            if g not in new_gmu_sets: new_gmu_sets[g] = {}
-            if mk not in new_gmu_sets[g]: new_gmu_sets[g][mk] = set()
-            new_gmu_sets[g][mk].add(u)
+            if not g or g == 'nan' or not mk: continue
+            if g not in new_grun_map: new_grun_map[g] = {}
+            new_grun_map[g][mk] = new_grun_map[g].get(mk, 0) + 1
+            if rcols['userId']:
+                u = str(row.get(rcols['userId'], '')).strip()
+                if u and u != 'nan':
+                    if g not in new_gmu_sets: new_gmu_sets[g] = {}
+                    if mk not in new_gmu_sets[g]: new_gmu_sets[g][mk] = set()
+                    new_gmu_sets[g][mk].add(u)
     for g, months in new_gmu_sets.items():
         if g not in gmu_map: gmu_map[g] = {}
         for mk, users in months.items():
             gmu_map[g][mk] = gmu_map[g].get(mk, 0) + len(users)
-    gm_rows_a = [['게임명', '월', '참여자수']]
-    for g in sorted(gmu_map):
-        for mk in sorted(gmu_map[g]):
-            gm_rows_a.append([g, mk, gmu_map[g][mk]])
+    for g, months in new_grun_map.items():
+        if g not in grun_map: grun_map[g] = {}
+        for mk, cnt in months.items():
+            grun_map[g][mk] = grun_map[g].get(mk, 0) + cnt
+    all_games_a = sorted(set(list(gmu_map.keys()) + list(grun_map.keys())))
+    gm_rows_a = [['게임명', '월', '참여자수', '실행수']]
+    for g in all_games_a:
+        all_months = sorted(set(list(gmu_map.get(g, {}).keys()) + list(grun_map.get(g, {}).keys())))
+        for mk in all_months:
+            gm_rows_a.append([g, mk, gmu_map.get(g, {}).get(mk, 0), grun_map.get(g, {}).get(mk, 0)])
     write_sheet(service, '집계_게임_월별', gm_rows_a)
     print('  집계_게임_월별 업데이트')
 

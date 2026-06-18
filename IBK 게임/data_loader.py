@@ -217,6 +217,12 @@ def _last_data_date(last_month_str):
         return last_month_str
 
 
+def load_report_sheet(sheet_name):
+    """보고 시트 원시 행 반환 (내부보고/외부보고 등)."""
+    svc = _get_service()
+    return _read_sheet_values(svc, sheet_name)
+
+
 def load_all(service=None):
     if service is None:
         service = _get_service()

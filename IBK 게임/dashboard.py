@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import pandas as pd
-from data_loader import load_all
+from data_loader import load_all, load_report_sheet
 
 st.set_page_config(page_title="IBK 게임 수익 대시보드", page_icon="🎮", layout="wide")
 
@@ -133,6 +133,68 @@ def calc_coupon_row(row):
         "예상 수익": round(수익),
     })
 
+# ── 보고 시트 렌더러 ───────────────────────────────────────────────────────────
+@st.cache_data(ttl=300)
+def _get_report_rows(sheet_name):
+    try:
+        return load_report_sheet(sheet_name)
+    except Exception:
+        return []
+
+def _render_report(rows):
+    def clean(row):
+        r = list(row[1:]) if len(row) > 1 else []
+        while r and str(r[-1]).strip() == '':
+            r.pop()
+        return [str(c) for c in r]
+
+    blocks, cur = [], []
+    for row in rows:
+        c = clean(row)
+        if not c:
+            if cur:
+                blocks.append(cur)
+                cur = []
+        else:
+            cur.append(c)
+    if cur:
+        blocks.append(cur)
+
+    if not blocks:
+        st.info("시트 데이터가 없습니다. 먼저 보고를 생성해주세요.")
+        return
+
+    if blocks[0]:
+        st.markdown(f"## {blocks[0][0][0]}")
+        if len(blocks[0]) > 1:
+            st.caption(blocks[0][1][0])
+
+    st.divider()
+
+    for block in blocks[1:]:
+        if not block:
+            continue
+        if len(block[0]) == 1:
+            st.markdown(f"#### {block[0][0]}")
+            data_rows = block[1:]
+        else:
+            data_rows = block
+
+        if not data_rows:
+            continue
+
+        if len(data_rows) == 1:
+            st.text('   |   '.join(c for c in data_rows[0] if str(c).strip()))
+        else:
+            header = data_rows[0]
+            body = data_rows[1:]
+            n = len(header)
+            padded = [(r + [''] * n)[:n] for r in body]
+            df = pd.DataFrame(padded, columns=header)
+            st.dataframe(df, hide_index=True, use_container_width=True)
+
+        st.write('')
+
 # ── 데이터 로드 ────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=300)
 def get_data():
@@ -158,7 +220,7 @@ with st.sidebar:
 
     page = st.radio(
         "메뉴",
-        ["📊 종합", "🎁 경품", "🎟 할인쿠폰", "📐 시뮬레이션", "📤 보고 생성", "❓ 사용 가이드"],
+        ["📊 종합", "🎁 경품", "🎟 할인쿠폰", "📐 시뮬레이션", "📤 보고 생성", "📋 내부보고", "📄 외부보고", "❓ 사용 가이드"],
         label_visibility="collapsed",
     )
 
@@ -173,7 +235,7 @@ with st.sidebar:
 
     st.caption("매체사 CSV · IBK 게임P 기준")
 
-if not data_ok and page != "📤 보고 생성":
+if not data_ok and page not in ("📤 보고 생성", "📋 내부보고", "📄 외부보고"):
     st.stop()
 
 # ── 월 필터 ────────────────────────────────────────────────────────────────────
@@ -716,6 +778,22 @@ elif page == "📤 보고 생성":
 # ══════════════════════════════════════════════════════════════════════════════
 # ❓ 사용 가이드
 # ══════════════════════════════════════════════════════════════════════════════
+elif page == "📋 내부보고":
+    st.title("📋 내부보고")
+    if st.button("🔄 새로고침", key="refresh_internal"):
+        st.cache_data.clear()
+        st.rerun()
+    rows = _get_report_rows("내부보고")
+    _render_report(rows)
+
+elif page == "📄 외부보고":
+    st.title("📄 외부보고")
+    if st.button("🔄 새로고침", key="refresh_external"):
+        st.cache_data.clear()
+        st.rerun()
+    rows = _get_report_rows("외부보고")
+    _render_report(rows)
+
 elif page == "❓ 사용 가이드":
     st.title("❓ 사용 가이드")
     st.divider()
