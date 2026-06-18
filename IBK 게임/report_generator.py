@@ -1365,6 +1365,110 @@ def write_internal_report(service):
     _save_snapshot(service, rows)
 
 
+def write_external_report(service):
+    """외부보고 탭 자동 생성 (경영진/외부 공유용 요약)"""
+    print('  외부보고 탭 작성...')
+    from datetime import date as _date
+    today_str = _date.today().strftime('%Y.%m.%d')
+
+    summary_df   = read_sheet(service, '집계_누적')
+    games_df     = read_sheet(service, '집계_게임별')
+    prize_use_df = read_sheet(service, '집계_경품사용')
+    coupons_df   = read_sheet(service, '집계_쿠폰')
+    gmu_df       = read_sheet(service, '집계_게임_월별')
+
+    total_runs = unique_users = 0
+    date_start = date_end = ''
+    if not summary_df.empty:
+        s = summary_df.iloc[0]
+        total_runs   = int(str(s.get('총실행수', 0) or 0))
+        unique_users = int(str(s.get('유니크참여자', 0) or 0))
+        date_start   = str(s.get('데이터시작', ''))
+        date_end     = str(s.get('데이터종료', ''))
+    date_range = f'{date_start} ~ {date_end}' if date_start else ''
+
+    rows = []
+    def r(*cells): rows.append(list(cells))
+    def empty(): rows.append([])
+
+    r('', 'IBK 카드앱 게이미피케이션 운영 현황')
+    r('', f'기준일: {today_str}   |   데이터 기간: {date_range}')
+    empty()
+
+    r('', '종합 현황')
+    r('', '총 게임 실행 수(회)', f'{total_runs:,}', '실제 참여자(명)', f'{unique_users:,}')
+    empty()
+
+    r('', '게임별 실행 수')
+    r('', '게임명', '실행 수(회)', '비율')
+    total_game_runs = 0
+    game_run_list = []
+    if not games_df.empty and '게임명' in games_df.columns:
+        for _, row in games_df.iterrows():
+            g   = str(row.get('게임명', ''))
+            cnt = int(str(row.get('실행수', 0) or 0))
+            pt  = str(row.get('포인트P', ''))
+            label = f'{g} ({int(pt):,}P)' if pt and pt not in ('nan', '0', '') else g
+            game_run_list.append((label, cnt))
+            total_game_runs += cnt
+    for label, cnt in sorted(game_run_list, key=lambda x: -x[1]):
+        ratio = f'{cnt/total_game_runs*100:.1f}%' if total_game_runs else '0%'
+        r('', label, f'{cnt:,}', ratio)
+    r('', '합계', f'{total_game_runs:,}', '100%')
+    empty()
+
+    r('', '경품 지급 현황')
+    r('', '게임명', '경품명', '교환처', '발행(건)', '사용(건)', '사용률')
+    if not prize_use_df.empty and '게임명' in prize_use_df.columns:
+        for g in sorted(prize_use_df['게임명'].unique()):
+            gdf = prize_use_df[prize_use_df['게임명'] == g]
+            for _, row in gdf.iterrows():
+                p       = str(row.get('경품명', ''))
+                v       = str(row.get('교환처', ''))
+                issued  = int(str(row.get('발행수', 0) or 0))
+                used    = int(str(row.get('사용수', 0) or 0))
+                if issued == 0:
+                    continue
+                ur = f'{used/issued*100:.1f}%'
+                r('', g, p, v, f'{issued:,}', f'{used:,}', ur)
+    empty()
+
+    r('', '할인쿠폰 현황')
+    r('', '게임명', '쿠폰명', '발행(건)', '사용(건)', '사용률')
+    if not coupons_df.empty and '쿠폰명' in coupons_df.columns:
+        for _, row in coupons_df.iterrows():
+            cn = str(row.get('쿠폰명', ''))
+            gn = str(row.get('게임명', ''))
+            ci = int(str(row.get('발행수', 0) or 0))
+            cu = int(str(row.get('사용수', 0) or 0))
+            if ci == 0:
+                continue
+            r('', gn, cn, f'{ci:,}', f'{cu:,}', f'{cu/ci*100:.1f}%')
+    empty()
+
+    r('', '게임별 월별 실행 추이')
+    if not gmu_df.empty and '게임명' in gmu_df.columns:
+        months_gmu = sorted(gmu_df['월'].dropna().unique().tolist())
+        r('', '게임명', *months_gmu, '합계')
+        gmu_data = {}
+        for _, row in gmu_df.iterrows():
+            g = str(row.get('게임명', ''))
+            mk = str(row.get('월', ''))
+            cnt = int(str(row.get('실행수', 0) or 0))
+            if g not in gmu_data:
+                gmu_data[g] = {}
+            gmu_data[g][mk] = cnt
+        for g in sorted(gmu_data):
+            vals = [gmu_data[g].get(mk, 0) for mk in months_gmu]
+            total = sum(vals)
+            r('', g, *[f'{v:,}' for v in vals], f'{total:,}')
+        all_vals = [sum(gmu_data[g].get(mk, 0) for g in gmu_data) for mk in months_gmu]
+        r('', '합계', *[f'{v:,}' for v in all_vals], f'{sum(all_vals):,}')
+
+    write_sheet(service, '외부보고', rows)
+    print('  외부보고 완료')
+
+
 def _save_snapshot(service, rows):
     """내부보고 내용을 날짜별 스냅샷 시트에 저장"""
     from datetime import date as _d
@@ -1574,6 +1678,7 @@ def run_full(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
     build_revenue_sheets(service, prize_monthly, coupon_monthly,
                          game_points, face_map, fee_map, vendor_map)
     write_internal_report(service)
+    write_external_report(service)
 
     prize_total = sum(v.get('prizeAmt', 0) for v in daily_stats.values())
     print(f'\n[5/5] 처리 결과:')
@@ -1634,6 +1739,7 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
         hist_pm, hist_cm = load_monthly_raw(service)
         build_revenue_sheets(service, hist_pm, hist_cm, game_points_e, face_map_e, fee_map_e, vendor_map_e)
         write_internal_report(service)
+        write_external_report(service)
         print('  수익률 탭 재생성 완료')
         return
 
@@ -1940,6 +2046,7 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
     build_revenue_sheets(service, merged_pm, merged_cm,
                          game_points_a, face_map_a, fee_map_a, vendor_map_a)
     write_internal_report(service)
+    write_external_report(service)
 
     print(f'\n[5/5] 증분 처리 완료: {new_dates}')
 
