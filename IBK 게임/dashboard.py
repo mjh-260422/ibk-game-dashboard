@@ -190,7 +190,18 @@ def _render_report(rows):
             body = data_rows[1:]
             n = len(header)
             padded = [(r + [''] * n)[:n] for r in body]
-            df = pd.DataFrame(padded, columns=header)
+            # 중복 컬럼명 제거
+            seen: dict = {}
+            deduped = []
+            for col in header:
+                k = str(col)
+                if k in seen:
+                    seen[k] += 1
+                    deduped.append(f"{k}_{seen[k]}" if k else f"_{seen[k]}")
+                else:
+                    seen[k] = 0
+                    deduped.append(k)
+            df = pd.DataFrame(padded, columns=deduped)
             st.dataframe(df, hide_index=True, use_container_width=True)
 
         st.write('')

@@ -218,9 +218,18 @@ def _last_data_date(last_month_str):
 
 
 def load_report_sheet(sheet_name):
-    """보고 시트 원시 행 반환 (내부보고/외부보고 등)."""
+    """보고 시트 행 반환 (서식값 그대로, 내부보고/외부보고 등)."""
     svc = _get_service()
-    return _read_sheet_values(svc, sheet_name)
+    result = svc.spreadsheets().values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=sheet_name,
+        valueRenderOption='FORMATTED_VALUE'
+    ).execute()
+    rows = result.get('values', [])
+    if not rows:
+        return []
+    max_cols = max(len(r) for r in rows)
+    return [r + [''] * (max_cols - len(r)) for r in rows]
 
 
 def load_all(service=None):
