@@ -33,12 +33,14 @@ def read_sheet(service, sheet_name):
 
 def ensure_sheet(service, sheet_name):
     meta = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
-    existing = [s['properties']['title'] for s in meta['sheets']]
+    existing = {s['properties']['title']: s['properties']['sheetId'] for s in meta['sheets']}
     if sheet_name not in existing:
-        service.spreadsheets().batchUpdate(
+        res = service.spreadsheets().batchUpdate(
             spreadsheetId=SPREADSHEET_ID,
             body={'requests': [{'addSheet': {'properties': {'title': sheet_name}}}]}
         ).execute()
+        return res['replies'][0]['addSheet']['properties']['sheetId']
+    return existing[sheet_name]
 
 
 def reset_sheet(service, sheet_name):
@@ -58,7 +60,16 @@ def reset_sheet(service, sheet_name):
 
 
 def write_sheet(service, sheet_name, data):
-    ensure_sheet(service, sheet_name)
+    sheet_id = ensure_sheet(service, sheet_name)
+    # 이전 format_sheets가 남긴 셀 병합이 있으면 values().update()가 일부 셀을 무시함 → 먼저 병합 해제
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=SPREADSHEET_ID,
+        body={'requests': [{'unmergeCells': {'range': {
+            'sheetId': sheet_id,
+            'startRowIndex': 0, 'endRowIndex': 2000,
+            'startColumnIndex': 0, 'endColumnIndex': 30
+        }}}]}
+    ).execute()
     service.spreadsheets().values().clear(
         spreadsheetId=SPREADSHEET_ID,
         range=sheet_name
@@ -1363,7 +1374,6 @@ def write_internal_report(service):
                 if mk not in m_tot: m_tot[mk] = {'pts': 0, 'ben': 0, 'ci': 0, 'ca': 0, 'pi': 0, 'pa': 0}
                 m_tot[mk]['pts'] += pts; m_tot[mk]['ben'] += ben; m_tot[mk]['ci'] += ci
                 m_tot[mk]['ca']  += ca;  m_tot[mk]['pi']  += pi;  m_tot[mk]['pa']  += pa
-    empty()
     r('', '합계', '', f'{d_tot["pts"]:,}', f'{d_tot["ben"]:,}',
       f'{d_tot["ci"]:,}', f'{d_tot["ca"]:,}', f'{d_tot["pi"]:,}', f'{d_tot["pa"]:,}')
     empty()
@@ -1376,7 +1386,6 @@ def write_internal_report(service):
         except: mk_lbl = mk
         r('', mk_lbl, f'{d["pts"]:,}', f'{d["ben"]:,}', f'{d["ci"]:,}', f'{d["ca"]:,}', f'{d["pi"]:,}', f'{d["pa"]:,}')
 
-    reset_sheet(service, '내부보고')
     write_sheet(service, '내부보고', rows)
     print('  내부보고 완료')
     _save_snapshot(service, rows)
@@ -1449,7 +1458,6 @@ def write_external_report(service):
                 ur = f'{used/issued*100:.1f}%'
                 r('', g, p, v, f'{issued:,}', f'{used:,}', ur)
 
-    reset_sheet(service, '외부보고')
     write_sheet(service, '외부보고', rows)
     print('  외부보고 완료')
 
