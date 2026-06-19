@@ -174,6 +174,13 @@ def _render_report(rows):
         """첫 행에 순수 정수값이 없으면 헤더로 판단"""
         return not any(_PURE_NUM.match(c.strip()) for c in row if c.strip())
 
+    def is_kv_row(row):
+        """짝수 개 셀로 홀수 인덱스가 모두 숫자형이면 레이블-값 쌍 행"""
+        cells = [c for c in row if c.strip()]
+        if len(cells) < 2 or len(cells) % 2 != 0:
+            return False
+        return all(_PURE_NUM.match(cells[i]) for i in range(1, len(cells), 2))
+
     def render_kv(data_rows):
         """레이블-값 쌍 형태 행을 metric 카드로 표시"""
         for row in data_rows:
@@ -243,15 +250,20 @@ def _render_report(rows):
             continue
 
         if len(data_rows) == 1:
-            # 단일 행: 텍스트로 표시
-            st.text('   |   '.join(c for c in data_rows[0] if c.strip()))
+            if is_kv_row(data_rows[0]):
+                render_kv(data_rows)
+            else:
+                st.text('   |   '.join(c for c in data_rows[0] if c.strip()))
         elif len(data_rows[0]) == 1:
             # 첫 행이 1셀 → 서브 레이블 (게임명 등), 나머지 별도 렌더링
             st.markdown(f"**{data_rows[0][0]}**")
             sub = data_rows[1:]
             if sub:
                 if len(sub) == 1:
-                    st.text('   |   '.join(c for c in sub[0] if c.strip()))
+                    if is_kv_row(sub[0]):
+                        render_kv(sub)
+                    else:
+                        st.text('   |   '.join(c for c in sub[0] if c.strip()))
                 elif is_header(sub[0]):
                     render_table(sub)
                 else:

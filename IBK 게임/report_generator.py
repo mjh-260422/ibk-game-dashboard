@@ -187,14 +187,17 @@ def format_report_sheet(service, sheet_name):
             reqs += [rep(i, 0, n_cols, rfmt(C_SECT, True, "LEFT")),
                      rowh(i, 26)]
         elif all(not is_num(x) for x in c if x.strip()):
-            reqs += [rep(i, 0, n_cols, rfmt(C_CHDR, True, "CENTER")),
+            reqs += [rep(i, 0, n_cols, rfmt(C_CHDR, True, "CENTER", 10, "OVERFLOW_CELL")),
                      rowh(i, 26)]
         elif any(x in ('합계', '소계') for x in c):
-            reqs += [rep(i, 0, n_cols, rfmt(C_SUMM, True, "CENTER")),
+            reqs += [rep(i, 0, n_cols, rfmt(C_SUMM, True, "LEFT", 10, "OVERFLOW_CELL")),
+                     rep(i, 3, n_cols, rfmt(C_SUMM, True, "RIGHT", 10, "OVERFLOW_CELL")),
                      rowh(i, 24)]
         else:
             alt = i % 2 == 0
-            reqs += [rep(i, 0, n_cols, rfmt(C_ALT if alt else C_WHITE, False, "CENTER")),
+            bg = C_ALT if alt else C_WHITE
+            reqs += [rep(i, 0, n_cols, rfmt(bg, False, "LEFT", 10, "OVERFLOW_CELL")),
+                     rep(i, 3, n_cols, rfmt(bg, False, "RIGHT", 10, "OVERFLOW_CELL")),
                      rowh(i, 24)]
 
     if cur_block_start is not None:
