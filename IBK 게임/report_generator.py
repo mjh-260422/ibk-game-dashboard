@@ -101,22 +101,23 @@ def format_report_sheet(service, sheet_name):
         return
 
     def rgb(r, g, b): return {"red": r/255, "green": g/255, "blue": b/255}
-    C_TITLE = rgb(30, 58, 95)
-    C_SECT  = rgb(30, 78, 121)
-    C_CHDR  = rgb(55, 122, 183)
-    C_SUMM  = rgb(210, 228, 248)
-    C_ALT   = rgb(235, 243, 254)
-    C_WHITE = rgb(255, 255, 255)
-    C_TW    = rgb(255, 255, 255)
-    C_TD    = rgb(30, 30, 30)
-    C_SUBT  = rgb(220, 228, 240)
 
-    def rfmt(bg, bold, text_color, h_align, font_size=10):
+    # 연한 배경 + 검정 글자 팔레트
+    C_TITLE = rgb(197, 217, 241)   # 제목: 소프트 파랑
+    C_SECT  = rgb(197, 217, 241)   # 섹션 헤더: 동일
+    C_CHDR  = rgb(173, 207, 234)   # 컬럼 헤더: 약간 짙은 파랑
+    C_SUMM  = rgb(225, 238, 250)   # 합계 행: 아주 연한 파랑
+    C_ALT   = rgb(245, 250, 255)   # 데이터 홀수 행
+    C_WHITE = rgb(255, 255, 255)
+    C_TD    = rgb(30, 30, 30)      # 모든 텍스트: 검정
+    C_SUBT  = rgb(235, 241, 248)   # 부제목
+
+    def rfmt(bg, bold, h_align, font_size=10, wrap="WRAP"):
         return {"backgroundColor": bg,
                 "textFormat": {"bold": bold, "fontSize": font_size,
-                               "foregroundColor": text_color, "fontFamily": "Arial"},
+                               "foregroundColor": C_TD, "fontFamily": "Arial"},
                 "horizontalAlignment": h_align, "verticalAlignment": "MIDDLE",
-                "wrapStrategy": "WRAP",
+                "wrapStrategy": wrap,
                 "padding": {"top": 3, "bottom": 3, "left": 6, "right": 6}}
 
     def rep(r1, c1, c2, fmt):
@@ -134,7 +135,7 @@ def format_report_sheet(service, sheet_name):
             "properties": {"pixelSize": h}, "fields": "pixelSize"}}
 
     def bdr(r1, r2, c1, c2):
-        b = {"style": "SOLID", "color": rgb(180, 199, 231)}
+        b = {"style": "SOLID", "color": rgb(196, 215, 234)}
         return {"updateBorders": {
             "range": {"sheetId": sheet_id, "startRowIndex": r1, "endRowIndex": r2,
                       "startColumnIndex": c1, "endColumnIndex": c2},
@@ -153,12 +154,10 @@ def format_report_sheet(service, sheet_name):
     n_cols = max(n_cols + 1, 10)
 
     reqs = []
-    # 기본 서식 초기화
-    reqs.append(rep(0, 0, n_cols, rfmt(C_WHITE, False, C_TD, "LEFT")))
+    reqs.append(rep(0, 0, n_cols, rfmt(C_WHITE, False, "LEFT")))
 
-    bdr_groups = []  # (start_row, end_row, max_col) for table blocks
+    bdr_groups = []
     cur_block_start = None
-    cur_block_type = None
     cur_block_max_col = 1
 
     for i, raw in enumerate(all_rows):
@@ -178,24 +177,24 @@ def format_report_sheet(service, sheet_name):
             cur_block_max_col = max(cur_block_max_col, row_max_col)
 
         if i == 0:
-            reqs += [rep(i, 0, n_cols, rfmt(C_TITLE, True, C_TW, "LEFT", 13)),
-                     rowh(i, 40)]
+            # 제목: OVERFLOW_CELL (한 줄 표시, 셀 넘침 허용)
+            reqs += [rep(i, 0, n_cols, rfmt(C_TITLE, True, "LEFT", 12, "OVERFLOW_CELL")),
+                     rowh(i, 38)]
         elif i == 1:
-            reqs += [rep(i, 0, n_cols, rfmt(C_SUBT, False, C_TD, "LEFT", 9)),
-                     rowh(i, 22)]
+            reqs += [rep(i, 0, n_cols, rfmt(C_SUBT, False, "LEFT", 9, "OVERFLOW_CELL")),
+                     rowh(i, 20)]
         elif len(c) == 1:
-            reqs += [rep(i, 0, n_cols, rfmt(C_SECT, True, C_TW, "LEFT")),
-                     rowh(i, 28)]
+            reqs += [rep(i, 0, n_cols, rfmt(C_SECT, True, "LEFT")),
+                     rowh(i, 26)]
         elif all(not is_num(x) for x in c if x.strip()):
-            # 컬럼 헤더: 숫자 없는 행
-            reqs += [rep(i, 0, n_cols, rfmt(C_CHDR, True, C_TW, "CENTER")),
+            reqs += [rep(i, 0, n_cols, rfmt(C_CHDR, True, "CENTER")),
                      rowh(i, 26)]
         elif any(x in ('합계', '소계') for x in c):
-            reqs += [rep(i, 0, n_cols, rfmt(C_SUMM, True, C_TD, "CENTER")),
+            reqs += [rep(i, 0, n_cols, rfmt(C_SUMM, True, "CENTER")),
                      rowh(i, 24)]
         else:
             alt = i % 2 == 0
-            reqs += [rep(i, 0, n_cols, rfmt(C_ALT if alt else C_WHITE, False, C_TD, "CENTER")),
+            reqs += [rep(i, 0, n_cols, rfmt(C_ALT if alt else C_WHITE, False, "CENTER")),
                      rowh(i, 24)]
 
     if cur_block_start is not None:
@@ -204,8 +203,8 @@ def format_report_sheet(service, sheet_name):
     for r1, r2, mc in bdr_groups:
         reqs.append(bdr(r1, r2, 0, mc))
 
-    # 열 너비 고정
-    col_widths = [20, 110, 155, 90, 90, 80, 90, 70, 80, 20]
+    # 열 너비: A(여백) B(교환처) C(경품/쿠폰명) D~I(수치) J(여백)
+    col_widths = [20, 100, 200, 80, 90, 80, 85, 75, 75, 20]
     for ci, w in enumerate(col_widths):
         reqs.append({"updateDimensionProperties": {
             "range": {"sheetId": sheet_id, "dimension": "COLUMNS",
