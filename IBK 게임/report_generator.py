@@ -84,6 +84,141 @@ def write_sheet(service, sheet_name, data):
     ).execute()
 
 
+def format_report_sheet(service, sheet_name):
+    """내부보고·외부보고 시트에 동적 서식 적용 (행 타입 자동 감지)"""
+    meta = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+    sheet_id = next((s['properties']['sheetId'] for s in meta['sheets']
+                     if s['properties']['title'] == sheet_name), None)
+    if sheet_id is None:
+        return
+
+    result = service.spreadsheets().values().get(
+        spreadsheetId=SPREADSHEET_ID, range=sheet_name,
+        valueRenderOption='FORMATTED_VALUE'
+    ).execute()
+    all_rows = result.get('values', [])
+    if not all_rows:
+        return
+
+    def rgb(r, g, b): return {"red": r/255, "green": g/255, "blue": b/255}
+    C_TITLE = rgb(30, 58, 95)
+    C_SECT  = rgb(30, 78, 121)
+    C_CHDR  = rgb(55, 122, 183)
+    C_SUMM  = rgb(210, 228, 248)
+    C_ALT   = rgb(235, 243, 254)
+    C_WHITE = rgb(255, 255, 255)
+    C_TW    = rgb(255, 255, 255)
+    C_TD    = rgb(30, 30, 30)
+    C_SUBT  = rgb(220, 228, 240)
+
+    def rfmt(bg, bold, text_color, h_align, font_size=10):
+        return {"backgroundColor": bg,
+                "textFormat": {"bold": bold, "fontSize": font_size,
+                               "foregroundColor": text_color, "fontFamily": "Arial"},
+                "horizontalAlignment": h_align, "verticalAlignment": "MIDDLE",
+                "wrapStrategy": "WRAP",
+                "padding": {"top": 3, "bottom": 3, "left": 6, "right": 6}}
+
+    def rep(r1, c1, c2, fmt):
+        return {"repeatCell": {
+            "range": {"sheetId": sheet_id, "startRowIndex": r1, "endRowIndex": r1+1,
+                      "startColumnIndex": c1, "endColumnIndex": c2},
+            "cell": {"userEnteredFormat": fmt},
+            "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy,padding)"
+        }}
+
+    def rowh(row, h):
+        return {"updateDimensionProperties": {
+            "range": {"sheetId": sheet_id, "dimension": "ROWS",
+                      "startIndex": row, "endIndex": row+1},
+            "properties": {"pixelSize": h}, "fields": "pixelSize"}}
+
+    def bdr(r1, r2, c1, c2):
+        b = {"style": "SOLID", "color": rgb(180, 199, 231)}
+        return {"updateBorders": {
+            "range": {"sheetId": sheet_id, "startRowIndex": r1, "endRowIndex": r2,
+                      "startColumnIndex": c1, "endColumnIndex": c2},
+            "top": b, "bottom": b, "left": b, "right": b,
+            "innerHorizontal": b, "innerVertical": b}}
+
+    def clean(row):
+        r = row[1:] if row and row[0] == '' else list(row)
+        while r and r[-1] == '': r = r[:-1]
+        return r
+
+    def is_num(s):
+        return bool(re.match(r'^-?[\d,]+(\.\d+)?%?$', str(s).strip()))
+
+    n_cols = max((len(r) for r in all_rows), default=1)
+    n_cols = max(n_cols + 1, 10)
+
+    reqs = []
+    # 기본 서식 초기화
+    reqs.append(rep(0, 0, n_cols, rfmt(C_WHITE, False, C_TD, "LEFT")))
+
+    bdr_groups = []  # (start_row, end_row, max_col) for table blocks
+    cur_block_start = None
+    cur_block_type = None
+    cur_block_max_col = 1
+
+    for i, raw in enumerate(all_rows):
+        c = clean(raw)
+        if not c:
+            if cur_block_start is not None:
+                bdr_groups.append((cur_block_start, i, cur_block_max_col))
+                cur_block_start = None
+            reqs.append(rowh(i, 6))
+            continue
+
+        row_max_col = len(raw)
+        if cur_block_start is None and i > 1:
+            cur_block_start = i
+            cur_block_max_col = row_max_col
+        elif cur_block_start is not None:
+            cur_block_max_col = max(cur_block_max_col, row_max_col)
+
+        if i == 0:
+            reqs += [rep(i, 0, n_cols, rfmt(C_TITLE, True, C_TW, "LEFT", 13)),
+                     rowh(i, 40)]
+        elif i == 1:
+            reqs += [rep(i, 0, n_cols, rfmt(C_SUBT, False, C_TD, "LEFT", 9)),
+                     rowh(i, 22)]
+        elif len(c) == 1:
+            reqs += [rep(i, 0, n_cols, rfmt(C_SECT, True, C_TW, "LEFT")),
+                     rowh(i, 28)]
+        elif all(not is_num(x) for x in c if x.strip()):
+            # 컬럼 헤더: 숫자 없는 행
+            reqs += [rep(i, 0, n_cols, rfmt(C_CHDR, True, C_TW, "CENTER")),
+                     rowh(i, 26)]
+        elif any(x in ('합계', '소계') for x in c):
+            reqs += [rep(i, 0, n_cols, rfmt(C_SUMM, True, C_TD, "CENTER")),
+                     rowh(i, 24)]
+        else:
+            alt = i % 2 == 0
+            reqs += [rep(i, 0, n_cols, rfmt(C_ALT if alt else C_WHITE, False, C_TD, "CENTER")),
+                     rowh(i, 24)]
+
+    if cur_block_start is not None:
+        bdr_groups.append((cur_block_start, len(all_rows), cur_block_max_col))
+
+    for r1, r2, mc in bdr_groups:
+        reqs.append(bdr(r1, r2, 0, mc))
+
+    # 열 너비 고정
+    col_widths = [20, 110, 155, 90, 90, 80, 90, 70, 80, 20]
+    for ci, w in enumerate(col_widths):
+        reqs.append({"updateDimensionProperties": {
+            "range": {"sheetId": sheet_id, "dimension": "COLUMNS",
+                      "startIndex": ci, "endIndex": ci+1},
+            "properties": {"pixelSize": w}, "fields": "pixelSize"}})
+
+    for batch_start in range(0, len(reqs), 200):
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={"requests": reqs[batch_start:batch_start+200]}
+        ).execute()
+
+
 def read_csv(path):
     for enc in ('cp949', 'euc-kr', 'utf-8-sig'):
         try:
@@ -1262,21 +1397,21 @@ def write_internal_report(service):
         pt      = gp_pt_map.get(g, '')
         label   = f'{g} ({pt}P)  (총 {total_i:,}회)' if pt and pt not in ('nan', '0', '') else f'{g}  (총 {total_i:,}회)'
         r('', label)
-        r('', '경품명', '교환처', '발행(건)', '사용(건)', '기간만료(건)', '사용률', '당첨확률')
+        r('', '교환처', '경품명', '발행(건)', '사용(건)', '기간만료(건)', '사용률', '당첨확률')
         for p, v, issued, used, expired in sorted(items, key=lambda x: -x[2]):
             if issued == 0:
                 continue
             ur = f'{used/issued*100:.1f}%' if issued else '0%'
             wr = f'{issued/total_i*100:.1f}%' if total_i else '0%'
-            r('', p, v, f'{issued:,}', f'{used:,}', f'{expired:,}', ur, wr)
+            r('', v, p, f'{issued:,}', f'{used:,}', f'{expired:,}', ur, wr)
         g_used = sum(x[3] for x in items); g_exp = sum(x[4] for x in items)
-        r('', '합계', '', f'{total_i:,}', f'{g_used:,}', f'{g_exp:,}',
+        r('', '', '합계', f'{total_i:,}', f'{g_used:,}', f'{g_exp:,}',
           f'{g_used/total_i*100:.1f}%' if total_i else '0%', '100%')
         empty()
 
     r('', '할인쿠폰 현황')
     r('', '종류별 발행 · 사용 현황')
-    r('', '쿠폰명', '발행(건)', '사용(건)', '사용률')
+    r('', '교환처', '쿠폰명', '발행(건)', '사용(건)', '사용률')
     c_ti = c_tu = 0
     game_coupon_ir = {}
     if not coupons_df.empty and '쿠폰명' in coupons_df.columns:
@@ -1285,11 +1420,13 @@ def write_internal_report(service):
             ci = int(str(row.get('발행수', 0) or 0)); cu = int(str(row.get('사용수', 0) or 0))
             if ci == 0:
                 continue
-            r('', cn, f'{ci:,}', f'{cu:,}', f'{cu/ci*100:.1f}%')
+            _m = re.match(r'\[IBK\]\s+(\S+)', cn)
+            cv = _m.group(1) if _m else ''
+            r('', cv, cn, f'{ci:,}', f'{cu:,}', f'{cu/ci*100:.1f}%')
             c_ti += ci; c_tu += cu
             if gn not in game_coupon_ir: game_coupon_ir[gn] = []
             game_coupon_ir[gn].append((cn, ci, cu))
-    r('', '합계', f'{c_ti:,}', f'{c_tu:,}', f'{c_tu/c_ti*100:.1f}%' if c_ti else '0%')
+    r('', '', '합계', f'{c_ti:,}', f'{c_tu:,}', f'{c_tu/c_ti*100:.1f}%' if c_ti else '0%')
     empty()
     r('', '게임별 쿠폰 발행 · 사용')
     r('', '게임명', '발행(건)', '사용(건)', '사용률')
@@ -1387,6 +1524,7 @@ def write_internal_report(service):
         r('', mk_lbl, f'{d["pts"]:,}', f'{d["ben"]:,}', f'{d["ci"]:,}', f'{d["ca"]:,}', f'{d["pi"]:,}', f'{d["pa"]:,}')
 
     write_sheet(service, '내부보고', rows)
+    format_report_sheet(service, '내부보고')
     print('  내부보고 완료')
     _save_snapshot(service, rows)
 
@@ -1443,22 +1581,8 @@ def write_external_report(service):
     r('', '합계', f'{total_game_runs:,}', '100%')
     empty()
 
-    r('', '경품 지급 현황')
-    r('', '게임명', '경품명', '교환처', '발행(건)', '사용(건)', '사용률')
-    if not prize_use_df.empty and '게임명' in prize_use_df.columns:
-        for g in sorted(prize_use_df['게임명'].unique()):
-            gdf = prize_use_df[prize_use_df['게임명'] == g]
-            for _, row in gdf.iterrows():
-                p       = str(row.get('경품명', ''))
-                v       = str(row.get('교환처', ''))
-                issued  = int(str(row.get('발행수', 0) or 0))
-                used    = int(str(row.get('사용수', 0) or 0))
-                if issued == 0:
-                    continue
-                ur = f'{used/issued*100:.1f}%'
-                r('', g, p, v, f'{issued:,}', f'{used:,}', ur)
-
     write_sheet(service, '외부보고', rows)
+    format_report_sheet(service, '외부보고')
     print('  외부보고 완료')
 
 
