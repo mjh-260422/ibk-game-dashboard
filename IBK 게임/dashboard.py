@@ -235,29 +235,17 @@ def _render_report(rows):
 
     st.divider()
 
-    for block in blocks[1:]:
-        if not block:
-            continue
-
-        # 섹션 헤더: 첫 행이 셀 1개
-        if len(block[0]) == 1:
-            st.markdown(f"#### {block[0][0]}")
-            data_rows = block[1:]
-        else:
-            data_rows = block
-
-        if not data_rows:
-            continue
-
-        if len(data_rows) == 1:
-            if is_kv_row(data_rows[0]):
-                render_kv(data_rows)
+    def _render_block_data(dr):
+        if not dr:
+            return
+        if len(dr) == 1:
+            if is_kv_row(dr[0]):
+                render_kv(dr)
             else:
-                st.text('   |   '.join(c for c in data_rows[0] if c.strip()))
-        elif len(data_rows[0]) == 1:
-            # 첫 행이 1셀 → 서브 레이블 (게임명 등), 나머지 별도 렌더링
-            st.markdown(f"**{data_rows[0][0]}**")
-            sub = data_rows[1:]
+                st.text('   |   '.join(c for c in dr[0] if c.strip()))
+        elif len(dr[0]) == 1:
+            st.markdown(f"**{dr[0][0]}**")
+            sub = dr[1:]
             if sub:
                 if len(sub) == 1:
                     if is_kv_row(sub[0]):
@@ -268,12 +256,29 @@ def _render_report(rows):
                     render_table(sub)
                 else:
                     render_kv(sub)
-        elif is_header(data_rows[0]):
-            # 헤더 행 + 데이터 행 → 일반 테이블
-            render_table(data_rows)
+        elif is_header(dr[0]):
+            render_table(dr)
         else:
-            # 레이블-값 쌍 형태 → metric 카드
-            render_kv(data_rows)
+            render_kv(dr)
+
+    for block in blocks[1:]:
+        if not block:
+            continue
+
+        if len(block[0]) == 1:
+            section_title = block[0][0]
+            data_rows = block[1:]
+        else:
+            section_title = None
+            data_rows = block
+
+        if section_title and "일별" in section_title:
+            with st.expander(f"📅 {section_title}", expanded=False):
+                _render_block_data(data_rows)
+        else:
+            if section_title:
+                st.markdown(f"#### {section_title}")
+            _render_block_data(data_rows)
 
         st.write('')
 
@@ -424,6 +429,34 @@ if page == "📊 종합":
             use_container_width=True, hide_index=True,
         )
 
+    st.divider()
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.subheader("상품별 요약")
+        if not cur_prize.empty:
+            df_sp = cur_prize[["공급사명", "상품명", "면가", "발행수", "교환수", "만료수",
+                                "정산금액", "확정수익", "잠재수익"]].copy()
+            df_sp["교환율(%)"] = (df_sp["교환수"] / df_sp["발행수"] * 100).round(1)
+            df_sp = df_sp[["공급사명", "상품명", "면가", "발행수", "교환수", "만료수",
+                            "교환율(%)", "정산금액", "확정수익", "잠재수익"]]
+            df_sp = df_sp.rename(columns={"공급사명": "브랜드명", "상품명": "경품명"})
+            st.dataframe(_fmt(df_sp), use_container_width=True, hide_index=True)
+        else:
+            st.caption("경품 데이터 없음")
+
+    with col_b:
+        st.subheader("쿠폰별 요약")
+        if not cur_coupon.empty:
+            df_sc = cur_coupon[["쿠폰명", "면가", "발행수", "사용수", "만료수",
+                                 "정산금액", "확정수익", "잠재수익"]].copy()
+            df_sc["사용율(%)"] = (df_sc["사용수"] / df_sc["발행수"] * 100).round(1)
+            df_sc = df_sc[["쿠폰명", "면가", "발행수", "사용수", "만료수",
+                            "사용율(%)", "정산금액", "확정수익", "잠재수익"]]
+            st.dataframe(_fmt(df_sc), use_container_width=True, hide_index=True)
+        else:
+            st.caption("쿠폰 데이터 없음")
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 🎁 경품
@@ -466,9 +499,6 @@ elif page == "🎁 경품":
     mean_r = rates.mean()
     std_r  = rates.std() if len(rates) > 1 else 0
 
-    df_p["상품"] = df_p.apply(
-        lambda r: _상품표시(r.get("공급사명", ""), r["상품명"], r["면가"]), axis=1
-    )
     def _prize_note(row):
         parts = []
         a = _anomaly_comment(row["교환율(%)"], mean_r, std_r)
@@ -490,12 +520,15 @@ elif page == "🎁 경품":
         for v in df_p["잠재수익"].values
     ]
 
-    cols = ["게임명", "상품", "게임P", "발행수", "교환수", "만료수",
+    cols = ["게임명", "공급사명", "상품명", "면가", "게임P", "발행수", "교환수", "만료수",
             "교환율(%)", "미교환율(%)", "정산금액", "교환금액", "수수료금액",
             "확정수익_표시", "확정수익률(%)", "잠재수익_표시", "잠재수익률(%)", "비고"]
 
     st.caption("확정수익 = 정산금액 − (발행수−만료수)×면가 + 수수료  |  잠재수익 = 정산금액 − 교환금액 + 수수료")
-    _disp_p = df_p[cols].rename(columns={"확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익"})
+    _disp_p = df_p[cols].rename(columns={
+        "공급사명": "브랜드명", "상품명": "경품명",
+        "확정수익_표시": "확정수익", "잠재수익_표시": "잠재수익",
+    })
     _sty_p = _fmt(_disp_p, skip_fmt=["확정수익", "잠재수익"])
     _sty_p = _sty_p.apply(lambda _: _확정_p_style, subset=["확정수익"], axis=0)
     _sty_p = _sty_p.apply(lambda _: _잠재_p_style, subset=["잠재수익"], axis=0)
