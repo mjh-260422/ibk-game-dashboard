@@ -41,6 +41,22 @@ def ensure_sheet(service, sheet_name):
         ).execute()
 
 
+def reset_sheet(service, sheet_name):
+    """시트 삭제 후 재생성 — 기존 서식/값 완전 초기화"""
+    meta = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+    for s in meta['sheets']:
+        if s['properties']['title'] == sheet_name:
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=SPREADSHEET_ID,
+                body={'requests': [{'deleteSheet': {'sheetId': s['properties']['sheetId']}}]}
+            ).execute()
+            break
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=SPREADSHEET_ID,
+        body={'requests': [{'addSheet': {'properties': {'title': sheet_name}}}]}
+    ).execute()
+
+
 def write_sheet(service, sheet_name, data):
     ensure_sheet(service, sheet_name)
     service.spreadsheets().values().clear(
@@ -1353,13 +1369,14 @@ def write_internal_report(service):
     empty()
 
     r('', '월별 합계')
-    r('', '월', '', '소진포인트(P)', '총혜택금액(원)', '할인쿠폰 발행', '할인쿠폰 총액', '경품 발행', '경품 총액')
+    r('', '월', '소진포인트(P)', '총혜택금액(원)', '할인쿠폰 발행', '할인쿠폰 총액', '경품 발행', '경품 총액')
     for mk in sorted(m_tot, reverse=True):
         d = m_tot[mk]
         try: y, mo = mk.split('.'); mk_lbl = f'{y}년 {mo}월'
         except: mk_lbl = mk
-        r('', mk_lbl, '', f'{d["pts"]:,}', f'{d["ben"]:,}', f'{d["ci"]:,}', f'{d["ca"]:,}', f'{d["pi"]:,}', f'{d["pa"]:,}')
+        r('', mk_lbl, f'{d["pts"]:,}', f'{d["ben"]:,}', f'{d["ci"]:,}', f'{d["ca"]:,}', f'{d["pi"]:,}', f'{d["pa"]:,}')
 
+    reset_sheet(service, '내부보고')
     write_sheet(service, '내부보고', rows)
     print('  내부보고 완료')
     _save_snapshot(service, rows)
@@ -1431,40 +1448,8 @@ def write_external_report(service):
                     continue
                 ur = f'{used/issued*100:.1f}%'
                 r('', g, p, v, f'{issued:,}', f'{used:,}', ur)
-    empty()
 
-    r('', '할인쿠폰 현황')
-    r('', '게임명', '쿠폰명', '발행(건)', '사용(건)', '사용률')
-    if not coupons_df.empty and '쿠폰명' in coupons_df.columns:
-        for _, row in coupons_df.iterrows():
-            cn = str(row.get('쿠폰명', ''))
-            gn = str(row.get('게임명', ''))
-            ci = int(str(row.get('발행수', 0) or 0))
-            cu = int(str(row.get('사용수', 0) or 0))
-            if ci == 0:
-                continue
-            r('', gn, cn, f'{ci:,}', f'{cu:,}', f'{cu/ci*100:.1f}%')
-    empty()
-
-    r('', '게임별 월별 실행 추이')
-    if not gmu_df.empty and '게임명' in gmu_df.columns:
-        months_gmu = sorted(gmu_df['월'].dropna().unique().tolist())
-        r('', '게임명', *months_gmu, '합계')
-        gmu_data = {}
-        for _, row in gmu_df.iterrows():
-            g = str(row.get('게임명', ''))
-            mk = str(row.get('월', ''))
-            cnt = int(str(row.get('실행수', 0) or 0))
-            if g not in gmu_data:
-                gmu_data[g] = {}
-            gmu_data[g][mk] = cnt
-        for g in sorted(gmu_data):
-            vals = [gmu_data[g].get(mk, 0) for mk in months_gmu]
-            total = sum(vals)
-            r('', g, *[f'{v:,}' for v in vals], f'{total:,}')
-        all_vals = [sum(gmu_data[g].get(mk, 0) for g in gmu_data) for mk in months_gmu]
-        r('', '합계', *[f'{v:,}' for v in all_vals], f'{sum(all_vals):,}')
-
+    reset_sheet(service, '외부보고')
     write_sheet(service, '외부보고', rows)
     print('  외부보고 완료')
 
