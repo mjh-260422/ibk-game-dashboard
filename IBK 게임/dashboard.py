@@ -430,32 +430,28 @@ if page == "📊 종합":
         )
 
     st.divider()
-    col_a, col_b = st.columns(2)
+    st.subheader("상품별 요약")
+    if not cur_prize.empty:
+        df_sp = cur_prize[["공급사명", "상품명", "면가", "발행수", "교환수", "만료수",
+                            "정산금액", "확정수익", "잠재수익"]].copy()
+        df_sp["교환율(%)"] = (df_sp["교환수"] / df_sp["발행수"] * 100).round(1)
+        df_sp = df_sp[["공급사명", "상품명", "면가", "발행수", "교환수", "만료수",
+                        "교환율(%)", "정산금액", "확정수익", "잠재수익"]]
+        df_sp = df_sp.rename(columns={"공급사명": "브랜드명", "상품명": "경품명"})
+        st.dataframe(_fmt(df_sp), use_container_width=True, hide_index=True)
+    else:
+        st.caption("경품 데이터 없음")
 
-    with col_a:
-        st.subheader("상품별 요약")
-        if not cur_prize.empty:
-            df_sp = cur_prize[["공급사명", "상품명", "면가", "발행수", "교환수", "만료수",
-                                "정산금액", "확정수익", "잠재수익"]].copy()
-            df_sp["교환율(%)"] = (df_sp["교환수"] / df_sp["발행수"] * 100).round(1)
-            df_sp = df_sp[["공급사명", "상품명", "면가", "발행수", "교환수", "만료수",
-                            "교환율(%)", "정산금액", "확정수익", "잠재수익"]]
-            df_sp = df_sp.rename(columns={"공급사명": "브랜드명", "상품명": "경품명"})
-            st.dataframe(_fmt(df_sp), use_container_width=True, hide_index=True)
-        else:
-            st.caption("경품 데이터 없음")
-
-    with col_b:
-        st.subheader("쿠폰별 요약")
-        if not cur_coupon.empty:
-            df_sc = cur_coupon[["쿠폰명", "면가", "발행수", "사용수", "만료수",
-                                 "정산금액", "확정수익", "잠재수익"]].copy()
-            df_sc["사용율(%)"] = (df_sc["사용수"] / df_sc["발행수"] * 100).round(1)
-            df_sc = df_sc[["쿠폰명", "면가", "발행수", "사용수", "만료수",
-                            "사용율(%)", "정산금액", "확정수익", "잠재수익"]]
-            st.dataframe(_fmt(df_sc), use_container_width=True, hide_index=True)
-        else:
-            st.caption("쿠폰 데이터 없음")
+    st.subheader("쿠폰별 요약")
+    if not cur_coupon.empty:
+        df_sc = cur_coupon[["쿠폰명", "면가", "발행수", "사용수", "만료수",
+                             "정산금액", "확정수익", "잠재수익"]].copy()
+        df_sc["사용율(%)"] = (df_sc["사용수"] / df_sc["발행수"] * 100).round(1)
+        df_sc = df_sc[["쿠폰명", "면가", "발행수", "사용수", "만료수",
+                        "사용율(%)", "정산금액", "확정수익", "잠재수익"]]
+        st.dataframe(_fmt(df_sc), use_container_width=True, hide_index=True)
+    else:
+        st.caption("쿠폰 데이터 없음")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
