@@ -1,21 +1,149 @@
 import sys
 import re
 import os
+import time
+import unicodedata
 from datetime import datetime, date
 
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 SPREADSHEET_ID = '1G2A_FyERvQOVQBUsu9AHx7FPrE-UAIX4Ohl9UNtalzY'
 KEY_FILE = r'C:\Users\jihye\.claude\google-sheets-key.json'
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 LAUNCH_DT = datetime(2026, 4, 23, 18, 0, 0)
 
+BACKUP_LOG_SHEET = '_백업목록'
+BACKUP_SHEETS = [
+    '집계_누적', '집계_일별', '집계_게임별', '집계_게임경품',
+    '집계_경품사용', '집계_쿠폰', '집계_월별', '집계_게임_월별',
+    '내부보고', '외부보고',
+]
+
 
 def get_service():
     creds = Credentials.from_service_account_file(KEY_FILE, scopes=SCOPES)
     return build('sheets', 'v4', credentials=creds)
+
+
+def _batch_update(service, requests, max_retries=5):
+    """429 Rate Limit 발생 시 exponential backoff 재시도"""
+    delay = 5
+    for attempt in range(max_retries):
+        try:
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=SPREADSHEET_ID,
+                body={"requests": requests}
+            ).execute()
+            return
+        except HttpError as e:
+            if e.resp.status == 429 and attempt < max_retries - 1:
+                print(f"  [429] 쿼터 초과, {delay}초 대기 후 재시도... ({attempt+1}/{max_retries})")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
+
+
+def _batch_update_ext(service, spreadsheet_id, requests, max_retries=3):
+    """외부(백업) 스프레드시트용 batchUpdate (재시도 포함)"""
+    delay = 3
+    for attempt in range(max_retries):
+        try:
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body={"requests": requests}
+            ).execute()
+            return
+        except HttpError as e:
+            if e.resp.status == 429 and attempt < max_retries - 1:
+                time.sleep(delay); delay *= 2
+            else:
+                raise
+
+
+def backup_to_drive(service):
+    """주요 집계 시트를 별도 스프레드시트에 백업. _백업목록에 ID 기록."""
+    from datetime import date as _d
+    today = _d.today().strftime('%Y%m%d')
+
+    log_df = read_sheet(service, BACKUP_LOG_SHEET)
+    existing_id = None
+    if not log_df.empty and '날짜' in log_df.columns and '백업ID' in log_df.columns:
+        match = log_df[log_df['날짜'] == today]
+        if not match.empty:
+            existing_id = str(match.iloc[0]['백업ID'])
+
+    if not existing_id:
+        result = service.spreadsheets().create(body={
+            'properties': {'title': f'IBK 게임 백업_{today}'}
+        }).execute()
+        existing_id = result['spreadsheetId']
+
+        prev_rows = []
+        if not log_df.empty:
+            for _, r in log_df.iterrows():
+                prev_rows.append([str(r.get('날짜', '')), str(r.get('백업ID', ''))])
+        write_sheet(service, BACKUP_LOG_SHEET,
+                    [['날짜', '백업ID']] + [[today, existing_id]] + prev_rows)
+
+    backup_id = existing_id
+    backup_url = f'https://docs.google.com/spreadsheets/d/{backup_id}'
+    print(f'  백업 대상: {backup_url}')
+
+    bmeta = service.spreadsheets().get(spreadsheetId=backup_id).execute()
+    b_sheet_map = {s['properties']['title']: s['properties']['sheetId']
+                   for s in bmeta['sheets']}
+
+    for sheet_name in BACKUP_SHEETS:
+        try:
+            data = service.spreadsheets().values().get(
+                spreadsheetId=SPREADSHEET_ID, range=sheet_name,
+                valueRenderOption='FORMATTED_VALUE'
+            ).execute().get('values', [])
+            if not data:
+                continue
+            if sheet_name not in b_sheet_map:
+                _batch_update_ext(service, backup_id,
+                                  [{'addSheet': {'properties': {'title': sheet_name}}}])
+                bmeta = service.spreadsheets().get(spreadsheetId=backup_id).execute()
+                b_sheet_map = {s['properties']['title']: s['properties']['sheetId']
+                               for s in bmeta['sheets']}
+            service.spreadsheets().values().clear(
+                spreadsheetId=backup_id, range=sheet_name).execute()
+            service.spreadsheets().values().update(
+                spreadsheetId=backup_id, range=f'{sheet_name}!A1',
+                valueInputOption='RAW', body={'values': data}
+            ).execute()
+            time.sleep(0.5)
+        except Exception as e:
+            print(f'    {sheet_name} 백업 경고: {e}')
+
+    print(f'  백업 완료 → {backup_url}')
+    return backup_id
+
+
+def restore_from_backup(service, backup_id):
+    """백업 스프레드시트에서 주요 시트를 메인으로 복원."""
+    print(f'  복원 중... backup_id={backup_id}')
+    for sheet_name in BACKUP_SHEETS:
+        try:
+            data = service.spreadsheets().values().get(
+                spreadsheetId=backup_id, range=sheet_name,
+                valueRenderOption='FORMATTED_VALUE'
+            ).execute().get('values', [])
+            if not data:
+                continue
+            write_sheet(service, sheet_name, data)
+            if sheet_name in ('내부보고', '외부보고'):
+                format_report_sheet(service, sheet_name)
+            time.sleep(0.5)
+            print(f'    {sheet_name} 복원 완료')
+        except Exception as e:
+            print(f'    {sheet_name} 복원 경고: {e}')
+    print('  복원 완료')
 
 
 def read_sheet(service, sheet_name):
@@ -48,28 +176,19 @@ def reset_sheet(service, sheet_name):
     meta = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
     for s in meta['sheets']:
         if s['properties']['title'] == sheet_name:
-            service.spreadsheets().batchUpdate(
-                spreadsheetId=SPREADSHEET_ID,
-                body={'requests': [{'deleteSheet': {'sheetId': s['properties']['sheetId']}}]}
-            ).execute()
+            _batch_update(service, [{'deleteSheet': {'sheetId': s['properties']['sheetId']}}])
             break
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=SPREADSHEET_ID,
-        body={'requests': [{'addSheet': {'properties': {'title': sheet_name}}}]}
-    ).execute()
+    _batch_update(service, [{'addSheet': {'properties': {'title': sheet_name}}}])
 
 
 def write_sheet(service, sheet_name, data):
     sheet_id = ensure_sheet(service, sheet_name)
     # 이전 format_sheets가 남긴 셀 병합이 있으면 values().update()가 일부 셀을 무시함 → 먼저 병합 해제
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=SPREADSHEET_ID,
-        body={'requests': [{'unmergeCells': {'range': {
-            'sheetId': sheet_id,
-            'startRowIndex': 0, 'endRowIndex': 2000,
-            'startColumnIndex': 0, 'endColumnIndex': 30
-        }}}]}
-    ).execute()
+    _batch_update(service, [{'unmergeCells': {'range': {
+        'sheetId': sheet_id,
+        'startRowIndex': 0, 'endRowIndex': 2000,
+        'startColumnIndex': 0, 'endColumnIndex': 30
+    }}}])
     service.spreadsheets().values().clear(
         spreadsheetId=SPREADSHEET_ID,
         range=sheet_name
@@ -206,19 +325,43 @@ def format_report_sheet(service, sheet_name):
     for r1, r2, mc in bdr_groups:
         reqs.append(bdr(r1, r2, 0, mc))
 
-    # 열 너비: A(여백) B(교환처) C(경품/쿠폰명) D~I(수치) J(여백)
-    col_widths = [20, 100, 200, 80, 90, 80, 85, 75, 75, 20]
-    for ci, w in enumerate(col_widths):
+    def _cw(s):
+        """글자 너비 계산: Korean/CJK=12px, ASCII=7px"""
+        return sum(12 if unicodedata.east_asian_width(ch) in ('W', 'F') else 7
+                   for ch in str(s))
+
+    # 열 너비: 제목/부제(i<2)는 OVERFLOW_CELL이므로 제외, 나머지 내용 기준 계산
+    col_max_px = {}
+    for i, raw in enumerate(all_rows):
+        if i < 2:
+            continue
+        c_row = clean(raw)
+        is_bold_row = len(c_row) == 1 or (c_row and all(not is_num(x) for x in c_row if x.strip()))
+        for ci, cell in enumerate(raw):
+            if str(cell).strip():
+                px = _cw(str(cell))
+                if is_bold_row:
+                    px = int(px * 1.15)
+                col_max_px[ci] = max(col_max_px.get(ci, 0), px)
+
+    PAD = 18
+    reqs.append({"updateDimensionProperties": {
+        "range": {"sheetId": sheet_id, "dimension": "COLUMNS",
+                  "startIndex": 0, "endIndex": 1},
+        "properties": {"pixelSize": 16}, "fields": "pixelSize"}})
+
+    for ci in range(1, n_cols):
+        raw_px = col_max_px.get(ci, 40)
+        w = max(55, min(300, raw_px + PAD))
         reqs.append({"updateDimensionProperties": {
             "range": {"sheetId": sheet_id, "dimension": "COLUMNS",
                       "startIndex": ci, "endIndex": ci+1},
             "properties": {"pixelSize": w}, "fields": "pixelSize"}})
 
     for batch_start in range(0, len(reqs), 200):
-        service.spreadsheets().batchUpdate(
-            spreadsheetId=SPREADSHEET_ID,
-            body={"requests": reqs[batch_start:batch_start+200]}
-        ).execute()
+        _batch_update(service, reqs[batch_start:batch_start+200])
+        if batch_start + 200 < len(reqs):
+            time.sleep(1)
 
 
 def read_csv(path):
@@ -1589,14 +1732,11 @@ def write_external_report(service):
 
 
 def _save_snapshot(service, rows):
-    """내부보고 내용을 날짜별 스냅샷 시트에 저장"""
-    from datetime import date as _d
-    snap = f'스냅샷_{_d.today().strftime("%Y%m%d")}'
+    """내부보고 완료 후 전체 집계를 별도 스프레드시트에 백업"""
     try:
-        write_sheet(service, snap, rows)
-        print(f'  스냅샷 저장: {snap}')
+        backup_to_drive(service)
     except Exception as e:
-        print(f'  스냅샷 저장 실패: {e}')
+        print(f'  백업 경고: {e}')
 
 
 def run_full(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
@@ -1808,6 +1948,11 @@ def run_full(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
 
 
 def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
+    print('\n[1.5/5] 변경 전 백업...')
+    try:
+        backup_to_drive(service)
+    except Exception as e:
+        print(f'  백업 실패 (계속 진행): {e}')
     print('\n[2/5] 기존 집계 데이터 읽기...')
     existing_daily = read_sheet(service, '집계_일별')
     existing_dates = set(existing_daily['날짜'].tolist()) if not existing_daily.empty and '날짜' in existing_daily.columns else set()
