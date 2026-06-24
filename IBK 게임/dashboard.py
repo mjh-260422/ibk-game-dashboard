@@ -1031,9 +1031,34 @@ elif page == "📸 스냅샷":
         selected_label = st.selectbox("날짜 선택", list(labels.keys()))
         selected_sheet = labels[selected_label]
 
-        if st.button("🔄 새로고침", key="refresh_snap"):
+        col_r1, col_r2 = st.columns([2, 6])
+        if col_r1.button("🔄 새로고침", key="refresh_snap"):
             st.cache_data.clear()
             st.rerun()
+
+        with col_r2.expander("⚠️ 이 스냅샷을 내부보고로 복원"):
+            st.warning(f"**{selected_label}** 스냅샷을 내부보고 시트에 덮어씁니다. 현재 내부보고 내용은 사라집니다.")
+            if st.button("복원 실행", type="primary", key="restore_snap"):
+                try:
+                    from google.oauth2.service_account import Credentials
+                    from googleapiclient.discovery import build as gbuild
+                    WRITE_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+                    try:
+                        info = dict(st.secrets["gcp_service_account"])
+                        creds = Credentials.from_service_account_info(info, scopes=WRITE_SCOPES)
+                    except Exception:
+                        creds = Credentials.from_service_account_file(
+                            r"C:\Users\jihye\.claude\google-sheets-key.json", scopes=WRITE_SCOPES
+                        )
+                    svc = gbuild("sheets", "v4", credentials=creds)
+                    snap_rows = _get_report_rows(selected_sheet)
+                    import report_generator as rg_restore
+                    rg_restore.write_sheet(svc, '내부보고', snap_rows)
+                    rg_restore.format_report_sheet(svc, '내부보고')
+                    st.cache_data.clear()
+                    st.success("복원 완료! 내부보고 탭에서 확인하세요.")
+                except Exception as e:
+                    st.error(f"복원 실패: {e}")
 
         rows = _get_report_rows(selected_sheet)
         _render_report(rows)
