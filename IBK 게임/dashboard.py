@@ -261,6 +261,77 @@ def _render_report(rows):
         else:
             render_kv(dr)
 
+    # 차트 섹션 이름 → 인덱스 열 / 차트 종류
+    _CHART_SECTIONS = {"월별 집계", "월별 합계", "일별 현황"}
+    _CHART_INDEX    = {"월별 집계": "월", "월별 합계": "월", "일별 현황": "날짜"}
+    _CHART_TYPE     = {"월별 집계": "bar", "월별 합계": "bar", "일별 현황": "line"}
+    _CHART_EXCLUDE  = {"월별 집계": {"월"}, "월별 합계": {"월"}, "일별 현황": {"날짜", "요일"}}
+
+    def _rows_to_df(dr):
+        """헤더+데이터 행 → DataFrame (합계 행 제외, 숫자 변환)"""
+        if not dr or len(dr) < 2:
+            return None
+        header = dr[0]
+        data   = [r for r in dr[1:] if not any(c == '합계' for c in r)]
+        n = len(header)
+        padded = [(r + [''] * n)[:n] for r in data]
+        df = pd.DataFrame(padded, columns=header)
+        for col in df.columns:
+            s = df[col].str.replace(',', '', regex=False)
+            converted = pd.to_numeric(s, errors='coerce')
+            if converted.notna().any():
+                df[col] = converted
+        return df
+
+    def _render_chart(section_title, dr):
+        df = _rows_to_df(dr)
+        if df is None or df.empty:
+            st.caption("차트 데이터 없음")
+            return
+        idx_col  = _CHART_INDEX.get(section_title, "")
+        excl     = _CHART_EXCLUDE.get(section_title, set())
+        num_cols = [c for c in df.columns if c not in excl and pd.api.types.is_numeric_dtype(df[c])]
+        if not num_cols:
+            st.caption("숫자 데이터 없음")
+            return
+
+        # 지표 선택 (월별 합계·일별 현황은 컬럼이 많아 multiselect 제공)
+        if len(num_cols) > 2:
+            sel = st.multiselect("지표 선택", num_cols, default=num_cols[:2],
+                                 key=f"chart_sel_{section_title}")
+        else:
+            sel = num_cols
+
+        if not sel:
+            return
+
+        if idx_col and idx_col in df.columns:
+            # 일별 현황은 날짜순 정렬, 월별은 문자열 정렬로도 연월순 보장
+            df = df.sort_values(idx_col)
+            df_chart = df.set_index(idx_col)[sel]
+        else:
+            df_chart = df[sel]
+
+        if _CHART_TYPE.get(section_title) == "line":
+            st.line_chart(df_chart, use_container_width=True)
+        else:
+            st.bar_chart(df_chart, use_container_width=True)
+
+    def _section_with_toggle(section_title, data_rows, show_title=True):
+        if show_title:
+            col_l, col_r = st.columns([6, 2])
+            col_l.markdown(f"#### {section_title}")
+            radio_col = col_r
+        else:
+            radio_col = st.container()
+        mode = radio_col.radio("보기", ["📋 표", "📊 차트"], horizontal=True,
+                               label_visibility="collapsed",
+                               key=f"view_mode_{section_title}")
+        if mode == "📊 차트":
+            _render_chart(section_title, data_rows)
+        else:
+            _render_block_data(data_rows)
+
     for block in blocks[1:]:
         if not block:
             continue
@@ -274,7 +345,9 @@ def _render_report(rows):
 
         if section_title and "일별" in section_title:
             with st.expander(f"📅 {section_title}", expanded=False):
-                _render_block_data(data_rows)
+                _section_with_toggle(section_title, data_rows, show_title=False)
+        elif section_title and section_title in _CHART_SECTIONS:
+            _section_with_toggle(section_title, data_rows)
         else:
             if section_title:
                 st.markdown(f"#### {section_title}")
