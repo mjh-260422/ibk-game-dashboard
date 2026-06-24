@@ -15,12 +15,6 @@ KEY_FILE = r'C:\Users\jihye\.claude\google-sheets-key.json'
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 LAUNCH_DT = datetime(2026, 4, 23, 18, 0, 0)
 
-BACKUP_LOG_SHEET = '_백업목록'
-BACKUP_SHEETS = [
-    '집계_누적', '집계_일별', '집계_게임별', '집계_게임경품',
-    '집계_경품사용', '집계_쿠폰', '집계_월별', '집계_게임_월별',
-    '내부보고', '외부보고',
-]
 
 
 def get_service():
@@ -47,103 +41,6 @@ def _batch_update(service, requests, max_retries=5):
                 raise
 
 
-def _batch_update_ext(service, spreadsheet_id, requests, max_retries=3):
-    """외부(백업) 스프레드시트용 batchUpdate (재시도 포함)"""
-    delay = 3
-    for attempt in range(max_retries):
-        try:
-            service.spreadsheets().batchUpdate(
-                spreadsheetId=spreadsheet_id,
-                body={"requests": requests}
-            ).execute()
-            return
-        except HttpError as e:
-            if e.resp.status == 429 and attempt < max_retries - 1:
-                time.sleep(delay); delay *= 2
-            else:
-                raise
-
-
-def backup_to_drive(service):
-    """주요 집계 시트를 별도 스프레드시트에 백업. _백업목록에 ID 기록."""
-    from datetime import date as _d
-    today = _d.today().strftime('%Y%m%d')
-
-    log_df = read_sheet(service, BACKUP_LOG_SHEET)
-    existing_id = None
-    if not log_df.empty and '날짜' in log_df.columns and '백업ID' in log_df.columns:
-        match = log_df[log_df['날짜'] == today]
-        if not match.empty:
-            existing_id = str(match.iloc[0]['백업ID'])
-
-    if not existing_id:
-        result = service.spreadsheets().create(body={
-            'properties': {'title': f'IBK 게임 백업_{today}'}
-        }).execute()
-        existing_id = result['spreadsheetId']
-
-        prev_rows = []
-        if not log_df.empty:
-            for _, r in log_df.iterrows():
-                prev_rows.append([str(r.get('날짜', '')), str(r.get('백업ID', ''))])
-        write_sheet(service, BACKUP_LOG_SHEET,
-                    [['날짜', '백업ID']] + [[today, existing_id]] + prev_rows)
-
-    backup_id = existing_id
-    backup_url = f'https://docs.google.com/spreadsheets/d/{backup_id}'
-    print(f'  백업 대상: {backup_url}')
-
-    bmeta = service.spreadsheets().get(spreadsheetId=backup_id).execute()
-    b_sheet_map = {s['properties']['title']: s['properties']['sheetId']
-                   for s in bmeta['sheets']}
-
-    for sheet_name in BACKUP_SHEETS:
-        try:
-            data = service.spreadsheets().values().get(
-                spreadsheetId=SPREADSHEET_ID, range=sheet_name,
-                valueRenderOption='FORMATTED_VALUE'
-            ).execute().get('values', [])
-            if not data:
-                continue
-            if sheet_name not in b_sheet_map:
-                _batch_update_ext(service, backup_id,
-                                  [{'addSheet': {'properties': {'title': sheet_name}}}])
-                bmeta = service.spreadsheets().get(spreadsheetId=backup_id).execute()
-                b_sheet_map = {s['properties']['title']: s['properties']['sheetId']
-                               for s in bmeta['sheets']}
-            service.spreadsheets().values().clear(
-                spreadsheetId=backup_id, range=sheet_name).execute()
-            service.spreadsheets().values().update(
-                spreadsheetId=backup_id, range=f'{sheet_name}!A1',
-                valueInputOption='RAW', body={'values': data}
-            ).execute()
-            time.sleep(0.5)
-        except Exception as e:
-            print(f'    {sheet_name} 백업 경고: {e}')
-
-    print(f'  백업 완료 → {backup_url}')
-    return backup_id
-
-
-def restore_from_backup(service, backup_id):
-    """백업 스프레드시트에서 주요 시트를 메인으로 복원."""
-    print(f'  복원 중... backup_id={backup_id}')
-    for sheet_name in BACKUP_SHEETS:
-        try:
-            data = service.spreadsheets().values().get(
-                spreadsheetId=backup_id, range=sheet_name,
-                valueRenderOption='FORMATTED_VALUE'
-            ).execute().get('values', [])
-            if not data:
-                continue
-            write_sheet(service, sheet_name, data)
-            if sheet_name in ('내부보고', '외부보고'):
-                format_report_sheet(service, sheet_name)
-            time.sleep(0.5)
-            print(f'    {sheet_name} 복원 완료')
-        except Exception as e:
-            print(f'    {sheet_name} 복원 경고: {e}')
-    print('  복원 완료')
 
 
 def read_sheet(service, sheet_name):
@@ -1671,7 +1568,7 @@ def write_internal_report(service):
     write_sheet(service, '내부보고', rows)
     format_report_sheet(service, '내부보고')
     print('  내부보고 완료')
-    _save_snapshot(service, rows)
+    _save_snapshot(rows)
 
 
 def write_external_report(service):
@@ -1731,12 +1628,16 @@ def write_external_report(service):
     print('  외부보고 완료')
 
 
-def _save_snapshot(service, rows):
-    """내부보고 완료 후 전체 집계를 별도 스프레드시트에 백업"""
-    try:
-        backup_to_drive(service)
-    except Exception as e:
-        print(f'  백업 경고: {e}')
+def _save_snapshot(rows):
+    """내부보고 완료 후 JSON 파일로 스냅샷 저장 (snapshots/YYYYMMDD.json)"""
+    import json
+    today = date.today().strftime('%Y%m%d')
+    snap_dir = os.path.join(os.path.dirname(__file__), 'snapshots')
+    os.makedirs(snap_dir, exist_ok=True)
+    path = os.path.join(snap_dir, f'{today}.json')
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(rows, f, ensure_ascii=False)
+    print(f'  스냅샷 저장: {path}')
 
 
 def run_full(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
@@ -1948,11 +1849,6 @@ def run_full(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
 
 
 def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
-    print('\n[1.5/5] 변경 전 백업...')
-    try:
-        backup_to_drive(service)
-    except Exception as e:
-        print(f'  백업 실패 (계속 진행): {e}')
     print('\n[2/5] 기존 집계 데이터 읽기...')
     existing_daily = read_sheet(service, '집계_일별')
     existing_dates = set(existing_daily['날짜'].tolist()) if not existing_daily.empty and '날짜' in existing_daily.columns else set()

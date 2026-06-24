@@ -1007,121 +1007,81 @@ elif page == "📄 외부보고":
     _render_report(rows)
 
 elif page == "📸 스냅샷":
-    st.title("📸 백업 / 복원")
-    st.caption("누적 추가 실행 전 자동으로 별도 스프레드시트에 백업됩니다.")
+    st.title("📸 스냅샷")
+    st.caption("내부보고 생성 시 자동으로 저장됩니다. git push 후 클라우드에도 반영됩니다.")
 
-    if st.button("🔄 새로고침", key="refresh_snap"):
+    import os, json as _json
+
+    snap_dir = os.path.join(os.path.dirname(__file__), "snapshots")
+
+    @st.cache_data(ttl=30)
+    def _list_snapshots():
+        if not os.path.isdir(snap_dir):
+            return []
+        files = sorted(
+            [f for f in os.listdir(snap_dir) if f.endswith(".json")],
+            reverse=True
+        )
+        return files
+
+    snap_files = _list_snapshots()
+
+    col_a, col_b = st.columns([6, 2])
+    if col_b.button("🔄 새로고침", key="snap_refresh"):
         st.cache_data.clear()
         st.rerun()
 
-    @st.cache_data(ttl=60)
-    def _load_backup_log():
-        try:
-            return load_report_sheet('_백업목록')
-        except Exception:
-            return []
-
-    log_rows = _load_backup_log()
-
-    backup_entries = []
-    for row in log_rows[1:]:
-        if len(row) >= 2 and str(row[1]).strip():
-            날짜 = str(row[0]).strip()
-            bid  = str(row[1]).strip()
-            try:
-                label = f"{날짜[:4]}.{날짜[4:6]}.{날짜[6:]}"
-            except Exception:
-                label = 날짜
-            backup_entries.append({'label': label, '날짜': 날짜, 'id': bid})
-
-    @st.cache_data(ttl=60)
-    def _old_snaps():
-        try:
-            return list_snapshot_sheets()
-        except Exception:
-            return []
-
-    old_snaps = _old_snaps()
-
-    if not backup_entries and not old_snaps:
-        st.info("저장된 백업이 없습니다. 누적 추가 실행 시 자동으로 백업됩니다.")
+    if not snap_files:
+        st.info("저장된 스냅샷이 없습니다. 내부보고 생성 시 자동으로 저장됩니다.")
     else:
-        tab_new, tab_old = st.tabs(["📦 백업 스프레드시트", "📋 구 스냅샷 탭 (내부보고만)"])
+        def _fmt(fname):
+            d = fname.replace(".json", "")
+            try:
+                return f"{d[:4]}.{d[4:6]}.{d[6:]}"
+            except Exception:
+                return d
 
-        with tab_new:
-            if not backup_entries:
-                st.info("백업 스프레드시트가 없습니다. 누적 추가 실행 시 생성됩니다.")
-            else:
-                sel = st.selectbox("백업 날짜", [e['label'] for e in backup_entries], key="sel_backup")
-                entry = next(e for e in backup_entries if e['label'] == sel)
-                backup_url = f"https://docs.google.com/spreadsheets/d/{entry['id']}"
-                st.markdown(f"📎 [구글시트에서 직접 열기]({backup_url})")
+        labels = {_fmt(f): f for f in snap_files}
+        sel_label = st.selectbox("날짜 선택", list(labels.keys()))
+        sel_file = labels[sel_label]
 
-                with st.expander("⚠️ 이 백업으로 전체 복원"):
-                    st.warning(
-                        f"**{sel}** 백업을 메인 시트에 덮어씁니다.  \n"
-                        "집계_누적, 집계_일별, 내부보고 등 주요 시트가 모두 복원됩니다."
-                    )
-                    if st.button("전체 복원 실행", type="primary", key="restore_full"):
-                        try:
-                            from google.oauth2.service_account import Credentials
-                            from googleapiclient.discovery import build as gbuild
-                            WRITE_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-                            try:
-                                info = dict(st.secrets["gcp_service_account"])
-                                creds = Credentials.from_service_account_info(info, scopes=WRITE_SCOPES)
-                            except Exception:
-                                creds = Credentials.from_service_account_file(
-                                    r"C:\Users\jihye\.claude\google-sheets-key.json", scopes=WRITE_SCOPES
-                                )
-                            svc = gbuild("sheets", "v4", credentials=creds)
-                            import report_generator as rg_bk
-                            with st.spinner("복원 중... (1~2분 소요)"):
-                                rg_bk.restore_from_backup(svc, entry['id'])
-                            st.cache_data.clear()
-                            st.success("전체 복원 완료! 내부보고 탭에서 확인하세요.")
-                        except Exception as e:
-                            st.error(f"복원 실패: {e}")
+        with st.expander("⚠️ 이 스냅샷을 내부보고로 복원"):
+            st.warning(
+                f"**{sel_label}** 스냅샷을 내부보고 시트에 덮어씁니다. "
+                "현재 내부보고 내용은 사라집니다."
+            )
+            if st.button("복원 실행", type="primary", key="snap_restore"):
+                try:
+                    snap_path = os.path.join(snap_dir, sel_file)
+                    with open(snap_path, encoding="utf-8") as fp:
+                        snap_rows = _json.load(fp)
+                    from google.oauth2.service_account import Credentials
+                    from googleapiclient.discovery import build as gbuild
+                    WRITE_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+                    try:
+                        info = dict(st.secrets["gcp_service_account"])
+                        creds = Credentials.from_service_account_info(info, scopes=WRITE_SCOPES)
+                    except Exception:
+                        creds = Credentials.from_service_account_file(
+                            r"C:\Users\jihye\.claude\google-sheets-key.json",
+                            scopes=WRITE_SCOPES,
+                        )
+                    svc = gbuild("sheets", "v4", credentials=creds)
+                    import report_generator as _rg
+                    _rg.write_sheet(svc, "내부보고", snap_rows)
+                    _rg.format_report_sheet(svc, "내부보고")
+                    st.cache_data.clear()
+                    st.success("복원 완료! 내부보고 탭에서 확인하세요.")
+                except Exception as e:
+                    st.error(f"복원 실패: {e}")
 
-        with tab_old:
-            if not old_snaps:
-                st.info("구 스냅샷 탭이 없습니다.")
-            else:
-                def _fmt_snap(name):
-                    d = name.replace("스냅샷_", "")
-                    try: return f"{d[:4]}.{d[4:6]}.{d[6:]}"
-                    except Exception: return d
-
-                labels = {_fmt_snap(s): s for s in old_snaps}
-                selected_label = st.selectbox("날짜 선택", list(labels.keys()), key="sel_old_snap")
-                selected_sheet = labels[selected_label]
-
-                with st.expander("⚠️ 이 스냅샷을 내부보고로 복원 (내부보고만)"):
-                    st.warning(f"**{selected_label}** 스냅샷을 내부보고 시트에만 덮어씁니다.")
-                    if st.button("내부보고 복원", type="primary", key="restore_old_snap"):
-                        try:
-                            from google.oauth2.service_account import Credentials
-                            from googleapiclient.discovery import build as gbuild
-                            WRITE_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-                            try:
-                                info = dict(st.secrets["gcp_service_account"])
-                                creds = Credentials.from_service_account_info(info, scopes=WRITE_SCOPES)
-                            except Exception:
-                                creds = Credentials.from_service_account_file(
-                                    r"C:\Users\jihye\.claude\google-sheets-key.json", scopes=WRITE_SCOPES
-                                )
-                            svc = gbuild("sheets", "v4", credentials=creds)
-                            snap_rows = _get_report_rows(selected_sheet)
-                            import report_generator as rg_r
-                            rg_r.write_sheet(svc, '내부보고', snap_rows)
-                            rg_r.format_report_sheet(svc, '내부보고')
-                            st.cache_data.clear()
-                            st.success("복원 완료!")
-                        except Exception as e:
-                            st.error(f"복원 실패: {e}")
-
-                rows = _get_report_rows(selected_sheet)
-                _render_report(rows)
+        snap_path = os.path.join(snap_dir, sel_file)
+        try:
+            with open(snap_path, encoding="utf-8") as fp:
+                rows = _json.load(fp)
+            _render_report(rows)
+        except Exception as e:
+            st.error(f"스냅샷 읽기 실패: {e}")
 
 elif page == "❓ 사용 가이드":
     st.title("❓ 사용 가이드")
