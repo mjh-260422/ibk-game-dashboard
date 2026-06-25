@@ -1103,13 +1103,26 @@ elif page == "❓ 사용 가이드":
 
     st.divider()
     st.markdown("## 🚀 보고 생성 순서")
-    st.markdown("""
-**① 데이터 파일 준비 (3개)**
-- 로우데이터 : CP > 게이미피케이션 > 결과 관리 > 엑셀 다운로드
-- 할인쿠폰 : CRAS > 이벤트관리 > 기프트샵 할인쿠폰 발행 > 매체사(ibk기업은행) > 엑셀 다운로드
-- 매체사 경품 : CRAS > 정산관리 > 매체사(IBK기프트샵) > 엑셀 다운로드
+    st.markdown("**① 데이터 파일 준비 (3개)**")
 
-**② 사이드바 [📤 보고 생성] 탭으로 이동**
+    _guide_dir = os.path.join(os.path.dirname(__file__), "guide_images")
+
+    st.markdown("**🎮 게임결과목록** : CP(윈큐브 어드민) > 프로모션 > 이벤트관리 > 게이미피케이션 > 결과 관리 > 엑셀 파일로 다운로드")
+    _img = os.path.join(_guide_dir, "guide_game_result.png")
+    if os.path.exists(_img):
+        st.image(_img, use_container_width=True)
+
+    st.markdown("**🎟 할인쿠폰발행목록** : CRAS > 이벤트관리 > 기프트샵 할인쿠폰 발행 > 매체사(ibk기업은행) > 엑셀파일로 저장")
+    _img = os.path.join(_guide_dir, "guide_coupon.png")
+    if os.path.exists(_img):
+        st.image(_img, use_container_width=True)
+
+    st.markdown("**🏆 매체사 경품** : CRAS > 정산관리 > 매체사(IBK기프트샵) > 엑셀파일로 저장")
+    _img = os.path.join(_guide_dir, "guide_prize.png")
+    if os.path.exists(_img):
+        st.image(_img, use_container_width=True)
+
+    st.markdown("""**② 사이드바 [📤 보고 생성] 탭으로 이동**
 
 **③ 실행 모드 선택**
 - **전체 덮어쓰기** : 기존 데이터 전체 삭제 후 업로드 파일로 완전 재처리
