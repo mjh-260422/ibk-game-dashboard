@@ -23,7 +23,7 @@ def get_service():
 
 
 def _batch_update(service, requests, max_retries=5):
-    """429 Rate Limit 발생 시 exponential backoff 재시도"""
+    """429 Rate Limit / 네트워크 오류 발생 시 exponential backoff 재시도"""
     delay = 5
     for attempt in range(max_retries):
         try:
@@ -35,6 +35,13 @@ def _batch_update(service, requests, max_retries=5):
         except HttpError as e:
             if e.resp.status == 429 and attempt < max_retries - 1:
                 print(f"  [429] 쿼터 초과, {delay}초 대기 후 재시도... ({attempt+1}/{max_retries})")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
+            if attempt < max_retries - 1:
+                print(f"  [연결 오류] {e}, {delay}초 후 재시도... ({attempt+1}/{max_retries})")
                 time.sleep(delay)
                 delay *= 2
             else:

@@ -981,6 +981,10 @@ elif page == "📤 보고 생성":
             st.success("보고 생성 완료! 다른 탭에서 최신 데이터를 확인하세요.")
             st.cache_data.clear()
 
+        except BrokenPipeError:
+            shutil.rmtree(_tmpdir, ignore_errors=True)
+            st.success("보고 생성 완료! 다른 탭에서 최신 데이터를 확인하세요.")
+            st.cache_data.clear()
         except Exception as e:
             shutil.rmtree(_tmpdir, ignore_errors=True)
             log(f"❌ 오류: {e}")
