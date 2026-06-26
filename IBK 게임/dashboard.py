@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import pandas as pd
-from data_loader import load_all, load_report_sheet, list_snapshot_sheets
+from data_loader import load_all, load_report_sheet, list_snapshot_sheets, load_game_daily_df
 
 st.set_page_config(page_title="IBK 게임 수익 대시보드", page_icon="🎮", layout="wide")
 
@@ -997,6 +997,29 @@ elif page == "📋 내부보고":
         st.rerun()
     rows = _get_report_rows("내부보고")
     _render_report(rows)
+
+    st.divider()
+    with st.expander("📊 게임별 일 실행수", expanded=False):
+        @st.cache_data(ttl=300)
+        def _load_game_daily():
+            try:
+                return load_game_daily_df()
+            except Exception:
+                return pd.DataFrame()
+
+        df_gd = _load_game_daily()
+        if df_gd.empty:
+            st.info("데이터 없음. 보고를 먼저 생성하세요.")
+        else:
+            game_cols = [c for c in df_gd.columns if c not in ('날짜', '합계')]
+            total_row = pd.DataFrame(
+                [['합계'] + [int(df_gd[c].sum()) for c in game_cols] + [int(df_gd['합계'].sum())]],
+                columns=df_gd.columns
+            )
+            df_show = pd.concat([df_gd, total_row], ignore_index=True)
+            st.dataframe(df_show, use_container_width=True, hide_index=True,
+                         column_config={"날짜": st.column_config.TextColumn("날짜", width=100),
+                                        "합계": st.column_config.NumberColumn("합계", format="%d")})
 
 elif page == "📄 외부보고":
     st.title("📄 외부보고")

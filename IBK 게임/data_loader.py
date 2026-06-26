@@ -241,6 +241,26 @@ def load_report_sheet(sheet_name):
     return [r + [''] * (max_cols - len(r)) for r in rows]
 
 
+def load_game_daily_df(service=None):
+    """집계_게임_일별 → 날짜×게임명 피벗 DataFrame (최신일 기준 내림차순)"""
+    if service is None:
+        service = _get_service()
+    rows = _read_sheet_values(service, '집계_게임_일별')
+    if not rows or len(rows) < 2:
+        return pd.DataFrame()
+    df = pd.DataFrame(rows[1:], columns=rows[0])
+    if not {'날짜', '게임명', '실행수'}.issubset(df.columns):
+        return pd.DataFrame()
+    df['실행수'] = pd.to_numeric(df['실행수'], errors='coerce').fillna(0).astype(int)
+    pivot = df.pivot_table(index='날짜', columns='게임명', values='실행수',
+                           aggfunc='sum', fill_value=0)
+    pivot.columns.name = None
+    pivot = pivot.reset_index().sort_values('날짜', ascending=False)
+    game_cols = [c for c in pivot.columns if c != '날짜']
+    pivot['합계'] = pivot[game_cols].sum(axis=1)
+    return pivot
+
+
 def load_all(service=None):
     if service is None:
         service = _get_service()

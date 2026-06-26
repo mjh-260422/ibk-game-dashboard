@@ -1759,6 +1759,21 @@ def run_full(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
     write_sheet(service, '집계_게임별', game_rows)
     print('  집계_게임별 완료')
 
+    game_daily_cnt = {}
+    if rcols['gameName'] and rcols['gameDate']:
+        for _, row in raw_df.iterrows():
+            dk = day_key(row.get(rcols['gameDate'], ''))
+            gn = str(row.get(rcols['gameName'], '')).strip()
+            if dk and gn and gn != 'nan':
+                game_daily_cnt.setdefault(dk, {})
+                game_daily_cnt[dk][gn] = game_daily_cnt[dk].get(gn, 0) + 1
+    gd_rows = [['날짜', '게임명', '실행수']]
+    for dk in sorted(game_daily_cnt.keys()):
+        for gn, cnt in sorted(game_daily_cnt[dk].items()):
+            gd_rows.append([dk, gn, cnt])
+    write_sheet(service, '집계_게임_일별', gd_rows)
+    print('  집계_게임_일별 완료')
+
     gp_rows = [['게임명','경품명','발행수']]
     for g, prizes in sorted(game_prize_counts.items()):
         for p, cnt in sorted(prizes.items(), key=lambda x: -x[1]): gp_rows.append([g, p, cnt])
@@ -1852,6 +1867,8 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
     print('\n[2/5] 기존 집계 데이터 읽기...')
     existing_daily = read_sheet(service, '집계_일별')
     existing_dates = set(existing_daily['날짜'].tolist()) if not existing_daily.empty and '날짜' in existing_daily.columns else set()
+    existing_gd = read_sheet(service, '집계_게임_일별')
+    existing_gd_dates = set(existing_gd['날짜'].tolist()) if not existing_gd.empty and '날짜' in existing_gd.columns else set()
     existing_users = read_set(service, '집계_유저')
 
     existing_mu_df = read_sheet(service, '집계_유저_월별')
@@ -2150,6 +2167,26 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
         all_day_rows[1:] = sorted(all_day_rows[1:], key=lambda x: str(x[0]))
         write_sheet(service, '집계_일별', all_day_rows)
         print(f'  집계_일별 {len(new_day_rows)}일 추가')
+
+    new_gd_cnt = {}
+    if rcols['gameName'] and rcols['gameDate']:
+        for _, row in raw_df.iterrows():
+            dk = day_key(row.get(rcols['gameDate'], ''))
+            if dk in existing_gd_dates:
+                continue
+            gn = str(row.get(rcols['gameName'], '')).strip()
+            if dk and gn and gn != 'nan':
+                new_gd_cnt.setdefault(dk, {})
+                new_gd_cnt[dk][gn] = new_gd_cnt[dk].get(gn, 0) + 1
+    if new_gd_cnt:
+        prev_gd = existing_gd.values.tolist() if not existing_gd.empty else []
+        new_gd_rows = []
+        for dk in sorted(new_gd_cnt.keys()):
+            for gn, cnt in sorted(new_gd_cnt[dk].items()):
+                new_gd_rows.append([dk, gn, cnt])
+        all_gd = [['날짜', '게임명', '실행수']] + prev_gd + new_gd_rows
+        write_sheet(service, '집계_게임_일별', all_gd)
+        print(f'  집계_게임_일별 {len(new_gd_rows)}행 추가')
 
     # 유저 추가
     if new_users:
