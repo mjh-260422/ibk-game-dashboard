@@ -85,6 +85,28 @@ def reset_sheet(service, sheet_name):
     _batch_update(service, [{'addSheet': {'properties': {'title': sheet_name}}}])
 
 
+def _values_call(fn, max_retries=5):
+    """values().clear() / values().update() 등 단일 write 호출용 재시도 래퍼"""
+    delay = 5
+    for attempt in range(max_retries):
+        try:
+            return fn()
+        except HttpError as e:
+            if e.resp.status == 429 and attempt < max_retries - 1:
+                print(f"  [429] 쿼터 초과, {delay}초 대기 후 재시도... ({attempt+1}/{max_retries})")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
+            if attempt < max_retries - 1:
+                print(f"  [연결 오류] {e}, {delay}초 후 재시도... ({attempt+1}/{max_retries})")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
+
+
 def write_sheet(service, sheet_name, data):
     sheet_id = ensure_sheet(service, sheet_name)
     # 이전 format_sheets가 남긴 셀 병합이 있으면 values().update()가 일부 셀을 무시함 → 먼저 병합 해제
@@ -93,18 +115,18 @@ def write_sheet(service, sheet_name, data):
         'startRowIndex': 0, 'endRowIndex': 2000,
         'startColumnIndex': 0, 'endColumnIndex': 30
     }}}])
-    service.spreadsheets().values().clear(
+    _values_call(lambda: service.spreadsheets().values().clear(
         spreadsheetId=SPREADSHEET_ID,
         range=sheet_name
-    ).execute()
+    ).execute())
     if not data:
         return
-    service.spreadsheets().values().update(
+    _values_call(lambda: service.spreadsheets().values().update(
         spreadsheetId=SPREADSHEET_ID,
         range=f'{sheet_name}!A1',
         valueInputOption='RAW',
         body={'values': data}
-    ).execute()
+    ).execute())
 
 
 def format_report_sheet(service, sheet_name):
