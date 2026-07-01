@@ -27,11 +27,10 @@ def _batch_update(service, requests, max_retries=5):
     delay = 5
     for attempt in range(max_retries):
         try:
-            service.spreadsheets().batchUpdate(
+            return service.spreadsheets().batchUpdate(
                 spreadsheetId=SPREADSHEET_ID,
                 body={"requests": requests}
             ).execute()
-            return
         except HttpError as e:
             if e.resp.status == 429 and attempt < max_retries - 1:
                 print(f"  [429] 쿼터 초과, {delay}초 대기 후 재시도... ({attempt+1}/{max_retries})")
@@ -67,10 +66,7 @@ def ensure_sheet(service, sheet_name):
     meta = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
     existing = {s['properties']['title']: s['properties']['sheetId'] for s in meta['sheets']}
     if sheet_name not in existing:
-        res = service.spreadsheets().batchUpdate(
-            spreadsheetId=SPREADSHEET_ID,
-            body={'requests': [{'addSheet': {'properties': {'title': sheet_name}}}]}
-        ).execute()
+        res = _batch_update(service, [{'addSheet': {'properties': {'title': sheet_name}}}])
         return res['replies'][0]['addSheet']['properties']['sheetId']
     return existing[sheet_name]
 
@@ -1087,13 +1083,13 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
         if tab_type in existing_sheets:
             reqs.append({'deleteSheet': {'sheetId': existing_sheets[tab_type]}})
         reqs.append({'addSheet': {'properties': {'title': tab_type}}})
-        res = service.spreadsheets().batchUpdate(spreadsheetId=SPREADSHEET_ID, body={'requests': reqs}).execute()
+        res = _batch_update(service, reqs)
         new_sid = next(r2['addSheet']['properties']['sheetId'] for r2 in res['replies'] if 'addSheet' in r2)
 
-        service.spreadsheets().values().update(
+        _values_call(lambda: service.spreadsheets().values().update(
             spreadsheetId=SPREADSHEET_ID, range=f'{tab_type}!A1',
             valueInputOption='USER_ENTERED', body={'values': rows}
-        ).execute()
+        ).execute())
 
         # 서식 적용
         fmt_reqs = []
@@ -1210,10 +1206,7 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
         # batchUpdate를 200개씩 나눠서 전송 (API 제한)
         chunk = 200
         for start in range(0, len(fmt_reqs), chunk):
-            service.spreadsheets().batchUpdate(
-                spreadsheetId=SPREADSHEET_ID,
-                body={'requests': fmt_reqs[start:start+chunk]}
-            ).execute()
+            _batch_update(service, fmt_reqs[start:start+chunk])
 
         print(f'  {tab_type} 탭 완료')
 
@@ -1300,13 +1293,13 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
     if '예상수익률' in existing_sheets:
         reqs.append({'deleteSheet': {'sheetId': existing_sheets['예상수익률']}})
     reqs.append({'addSheet': {'properties': {'title': '예상수익률'}}})
-    res = service.spreadsheets().batchUpdate(spreadsheetId=SPREADSHEET_ID, body={'requests': reqs}).execute()
+    res = _batch_update(service, reqs)
     exp_sid = next(r2['addSheet']['properties']['sheetId'] for r2 in res['replies'] if 'addSheet' in r2)
 
-    service.spreadsheets().values().update(
+    _values_call(lambda: service.spreadsheets().values().update(
         spreadsheetId=SPREADSHEET_ID, range='예상수익률!A1',
         valueInputOption='USER_ENTERED', body={'values': exp_rows}
-    ).execute()
+    ).execute())
 
     # 서식
     C_GRAND_LABEL_BG = {'red': 0.196, 'green': 0.396, 'blue': 0.329}
@@ -1371,9 +1364,7 @@ def build_revenue_sheets(service, prize_monthly, coupon_monthly,
         'fields': 'userEnteredFormat.wrapStrategy'
     }})
     for start in range(0, len(efmt), 200):
-        service.spreadsheets().batchUpdate(
-            spreadsheetId=SPREADSHEET_ID, body={'requests': efmt[start:start+200]}
-        ).execute()
+        _batch_update(service, efmt[start:start+200])
     print('  예상수익률 탭 완료')
 
 
