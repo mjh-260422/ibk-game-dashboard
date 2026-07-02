@@ -27,10 +27,12 @@ def _batch_update(service, requests, max_retries=5):
     delay = 5
     for attempt in range(max_retries):
         try:
-            return service.spreadsheets().batchUpdate(
+            result = service.spreadsheets().batchUpdate(
                 spreadsheetId=SPREADSHEET_ID,
                 body={"requests": requests}
             ).execute()
+            time.sleep(1)
+            return result
         except HttpError as e:
             if e.resp.status == 429 and attempt < max_retries - 1:
                 print(f"  [429] 쿼터 초과, {delay}초 대기 후 재시도... ({attempt+1}/{max_retries})")
@@ -86,7 +88,9 @@ def _values_call(fn, max_retries=5):
     delay = 5
     for attempt in range(max_retries):
         try:
-            return fn()
+            result = fn()
+            time.sleep(1)
+            return result
         except HttpError as e:
             if e.resp.status == 429 and attempt < max_retries - 1:
                 print(f"  [429] 쿼터 초과, {delay}초 대기 후 재시도... ({attempt+1}/{max_retries})")
