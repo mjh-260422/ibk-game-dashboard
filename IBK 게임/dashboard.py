@@ -932,7 +932,12 @@ elif page == "📤 보고 생성":
         if not prize_paths:  missing.append("매체사경품")
         st.info(f"아직 인식되지 않은 파일 종류: {', '.join(missing)}")
 
-    if st.button("📊 보고 생성", type="primary", disabled=not all_ready, use_container_width=True):
+    overwrite_confirmed = True
+    if run_mode == "전체 덮어쓰기" and all_ready:
+        st.warning("⚠️ 전체 덮어쓰기 모드: 기존 구글시트 데이터가 모두 삭제되고 업로드한 파일로 재산출됩니다.")
+        overwrite_confirmed = st.checkbox("확인했습니다. 기존 데이터를 삭제하고 덮어씁니다.")
+
+    if st.button("📊 보고 생성", type="primary", disabled=not (all_ready and overwrite_confirmed), use_container_width=True):
         log_box = st.empty()
         log_lines = []
 
