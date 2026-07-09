@@ -2,7 +2,9 @@
 <html>
 <head>
   <base target="_top">
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"
+    integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk"
+    crossorigin="anonymous"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; font-size: 14px; }
     .drop-area {
@@ -49,10 +51,18 @@
         !(selectedFiles.length > 0 && document.getElementById('confirmCheck').checked);
     }
 
+    function renderFileList() {
+      var listEl = document.getElementById('fileList');
+      listEl.textContent = '';
+      selectedFiles.forEach(function(f, idx) {
+        if (idx > 0) listEl.appendChild(document.createElement('br'));
+        listEl.appendChild(document.createTextNode('✓ ' + f.name));
+      });
+    }
+
     document.getElementById('fileInput').addEventListener('change', function(e) {
       selectedFiles = Array.from(e.target.files);
-      var list = selectedFiles.map(function(f) { return '✓ ' + f.name; }).join('<br>');
-      document.getElementById('fileList').innerHTML = list;
+      renderFileList();
       updateButtonState();
     });
 
@@ -85,6 +95,12 @@
             .withSuccessHandler(function(result) {
               status.className = result.success ? 'success' : 'error';
               status.textContent = result.message;
+              if (result.success) {
+                selectedFiles = [];
+                document.getElementById('fileInput').value = '';
+                document.getElementById('confirmCheck').checked = false;
+                renderFileList();
+              }
               updateButtonState();
             })
             .withFailureHandler(function(err) {
@@ -105,7 +121,7 @@
           } catch (e) {
             status.className = 'error';
             status.textContent = '오류: ' + file.name + ' 파싱 실패 (' + e.message + ')';
-            btn.disabled = false;
+            updateButtonState();
             return;
           }
           i++;
@@ -113,7 +129,7 @@
         }).catch(function(err) {
           status.className = 'error';
           status.textContent = '오류: ' + err.message;
-          btn.disabled = false;
+          updateButtonState();
         });
       }
       next();

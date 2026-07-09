@@ -46,3 +46,17 @@ test('파일에 데이터 행이 하나도 없으면 에러를 반환한다', ()
   const result = mergeRawFiles([{ name: 'empty.xls', rows: [] }]);
   assert.match(result.error, /empty\.xls/);
 });
+
+test('헤더만 있고 데이터 행이 없는 파일은 에러 없이 0행으로 취급한다', () => {
+  const filesData = [
+    { name: 'header-only.xls', rows: [['번호', '이름']] },
+    { name: 'b.xls', rows: [['번호', '이름'], ['1', '홍길동']] }
+  ];
+  const result = mergeRawFiles(filesData);
+  assert.equal(result.error, undefined);
+  assert.deepEqual(result.rows, [
+    ['번호', '이름'],
+    ['1', '홍길동']
+  ]);
+  assert.deepEqual(result.log, ['header-only.xls: 0행', 'b.xls: 1행']);
+});
