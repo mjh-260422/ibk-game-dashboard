@@ -126,15 +126,16 @@ function convertAndSave() {
     dedupData.push(row);
   }
 
-  // 2단계: 실물 배송 시트에 "같은 전화번호 + 같은 발송월"로 이미 기록된 건만 제외
-  // (다른 달에 재당첨된 경우는 새로운 건이므로 제외하지 않음)
+  // 2단계: 실물 배송 시트에 "같은 전화번호 + 같은 발송월 + 같은 좌수"로 이미 기록된 건만 제외
+  // (다른 달 재당첨, 또는 같은 달이라도 다른 좌수(구간)에 새로 당첨된 경우는 별개 건이므로 제외하지 않음)
   var shippedKeys = getShippedPhones();
   var alreadyShippedCount = 0;
   var finalData = [];
   for (var i = 0; i < dedupData.length; i++) {
     var phone = String(dedupData[i][CI.phone] || "").replace(/\D/g, "");
     var month = extractSendMonth(dedupData[i], CI);
-    var shipKey = phone + "|" + month;
+    var zone  = CI.mediaName !== -1 ? extractZoneSu(dedupData[i][CI.mediaName]) : "";
+    var shipKey = phone + "|" + month + "|" + zone;
     if (shippedKeys[shipKey]) {
       alreadyShippedCount++;
     } else {
@@ -210,7 +211,7 @@ function convertAndSave() {
 }
 
 
-// 실물 배송 시트에서 이미 기록된 "전화번호|발송월" 키 객체 반환 {"전화번호|월": true}
+// 실물 배송 시트에서 이미 기록된 "전화번호|발송월|좌수" 키 객체 반환
 function getShippedPhones() {
   try {
     var ss = SpreadsheetApp.openById(CONFIG.WOORICRD_SS_ID);
@@ -222,8 +223,9 @@ function getShippedPhones() {
     var keyObj = {};
     for (var i = 0; i < values.length; i++) {
       var month = String(values[i][0]).trim();
+      var zone  = String(values[i][1]).trim();
       var p = String(values[i][2]).replace(/\D/g, "");
-      if (p && month) keyObj[p + "|" + month] = true;
+      if (p && month) keyObj[p + "|" + month + "|" + zone] = true;
     }
     return keyObj;
   } catch(e) {
@@ -504,6 +506,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     mergeRawFiles: mergeRawFiles,
     stripWooriPrefix: stripWooriPrefix,
-    extractSendMonth: extractSendMonth
+    extractSendMonth: extractSendMonth,
+    extractZoneSu: extractZoneSu
   };
 }

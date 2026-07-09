@@ -1,6 +1,17 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { mergeRawFiles, stripWooriPrefix, extractSendMonth } = require('./주문_자동화_script.js');
+const { mergeRawFiles, stripWooriPrefix, extractSendMonth, extractZoneSu } = require('./주문_자동화_script.js');
+
+test('extractZoneSu: 매체명 "우리카드(08)"에서 좌수를 숫자 문자열로 추출한다', () => {
+  assert.equal(extractZoneSu('우리카드(08)'), '8');
+  assert.equal(extractZoneSu('우리카드(02)'), '2');
+});
+
+test('extractZoneSu: 괄호 숫자가 없으면 빈 문자열을 반환한다', () => {
+  assert.equal(extractZoneSu('우리카드'), '');
+  assert.equal(extractZoneSu(''), '');
+  assert.equal(extractZoneSu(null), '');
+});
 
 test('stripWooriPrefix: "[우리카드]_" 접두사를 제거한다', () => {
   assert.equal(stripWooriPrefix('[우리카드]_다이슨 슈퍼소닉 뉴럴 헤어 드라이기'), '다이슨 슈퍼소닉 뉴럴 헤어 드라이기');
