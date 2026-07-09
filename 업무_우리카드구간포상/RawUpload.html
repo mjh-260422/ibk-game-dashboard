@@ -68,6 +68,29 @@
 
     document.getElementById('confirmCheck').addEventListener('change', updateButtonState);
 
+    var dropArea = document.getElementById('dropArea');
+    ['dragenter', 'dragover'].forEach(function(evt) {
+      dropArea.addEventListener(evt, function(e) {
+        e.preventDefault();
+        dropArea.classList.add('hover');
+      });
+    });
+    ['dragleave', 'drop'].forEach(function(evt) {
+      dropArea.addEventListener(evt, function(e) {
+        e.preventDefault();
+        dropArea.classList.remove('hover');
+      });
+    });
+    dropArea.addEventListener('drop', function(e) {
+      var files = Array.from(e.dataTransfer.files).filter(function(f) {
+        return /\.(xls|xlsx)$/i.test(f.name);
+      });
+      if (files.length === 0) return;
+      selectedFiles = files;
+      renderFileList();
+      updateButtonState();
+    });
+
     function readAsArrayBuffer(file) {
       return new Promise(function(resolve, reject) {
         var reader = new FileReader();
