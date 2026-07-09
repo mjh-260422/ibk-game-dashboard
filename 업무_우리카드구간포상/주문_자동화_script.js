@@ -405,3 +405,50 @@ function checkSheetNames() {
   var names = ss.getSheets().map(function(s) { return '"' + s.getName() + '"'; }).join("\n");
   SpreadsheetApp.getUi().alert("시트 목록:\n" + names);
 }
+
+
+function mergeRawFiles(filesData) {
+  if (!filesData || filesData.length === 0) {
+    return { error: '선택된 파일이 없습니다.' };
+  }
+
+  var firstRows = filesData[0].rows;
+  if (!firstRows || firstRows.length === 0) {
+    return { error: filesData[0].name + ': 빈 파일입니다.' };
+  }
+  var canonicalHeader = firstRows[0].map(function(h) { return String(h).trim(); });
+
+  var mergedRows = [canonicalHeader];
+  var log = [];
+
+  for (var f = 0; f < filesData.length; f++) {
+    var file = filesData[f];
+    var rows = file.rows;
+    if (!rows || rows.length === 0) {
+      return { error: file.name + ': 빈 파일입니다.' };
+    }
+    var header = rows[0].map(function(h) { return String(h).trim(); });
+    if (JSON.stringify(header) !== JSON.stringify(canonicalHeader)) {
+      return {
+        error: file.name + '의 헤더가 ' + filesData[0].name + '와 다릅니다.\n\n'
+          + '기준: ' + canonicalHeader.join(', ') + '\n\n'
+          + file.name + ': ' + header.join(', ')
+      };
+    }
+
+    var dataRows = rows.slice(1).map(function(row) {
+      var padded = row.slice(0, canonicalHeader.length);
+      while (padded.length < canonicalHeader.length) padded.push('');
+      return padded;
+    });
+    mergedRows = mergedRows.concat(dataRows);
+    log.push(file.name + ': ' + dataRows.length + '행');
+  }
+
+  return { header: canonicalHeader, rows: mergedRows, log: log };
+}
+
+
+if (typeof module !== 'undefined') {
+  module.exports = { mergeRawFiles: mergeRawFiles };
+}
