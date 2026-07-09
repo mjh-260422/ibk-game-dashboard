@@ -4,6 +4,7 @@
 // ============================================================
 
 var CONFIG = {
+  RAW_SHEET_NAME: "로우",
   MASTER_SHEET_NAME: "상품마스터",
   MASTER_COL_PRODUCT_NAME:  "상품",
   MASTER_COL_PURCHASE_URL:  "구매링크",
@@ -36,6 +37,7 @@ function extractZoneSu(mediaName) {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("주문 자동화")
+    .addItem("로우데이터 업로드", "showRawUploadDialog")
     .addItem("변환 & 파일 저장 (전체 실행)", "convertAndSave")
     .addSeparator()
     .addItem("상품 마스터 시트 만들기", "createMasterSheet")
@@ -404,6 +406,42 @@ function checkSheetNames() {
   var ss = SpreadsheetApp.openById("1Ce3swcsiFJLRW9dnAqnvXjmPmh2istTASiHOwCbnUiU");
   var names = ss.getSheets().map(function(s) { return '"' + s.getName() + '"'; }).join("\n");
   SpreadsheetApp.getUi().alert("시트 목록:\n" + names);
+}
+
+
+function showRawUploadDialog() {
+  var html = HtmlService.createHtmlOutputFromFile('RawUpload')
+    .setWidth(480)
+    .setHeight(440);
+  SpreadsheetApp.getUi().showModalDialog(html, '로우데이터 업로드');
+}
+
+
+function processRawFiles(filesData) {
+  var merged = mergeRawFiles(filesData);
+  if (merged.error) {
+    return { success: false, message: merged.error };
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.RAW_SHEET_NAME);
+  if (!sheet) {
+    return { success: false, message: '"' + CONFIG.RAW_SHEET_NAME + '" 탭을 찾을 수 없습니다.' };
+  }
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow > 0 && lastCol > 0) {
+    sheet.getRange(1, 1, lastRow, lastCol).clearContent();
+  }
+
+  sheet.getRange(1, 1, merged.rows.length, merged.header.length).setValues(merged.rows);
+
+  var totalRows = merged.rows.length - 1;
+  return {
+    success: true,
+    message: '완료: 총 ' + totalRows + '행 병합\n\n' + merged.log.join('\n')
+  };
 }
 
 
