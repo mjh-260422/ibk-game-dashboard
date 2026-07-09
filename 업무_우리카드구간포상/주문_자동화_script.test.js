@@ -1,6 +1,29 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { mergeRawFiles } = require('./주문_자동화_script.js');
+const { mergeRawFiles, stripWooriPrefix, extractSendMonth } = require('./주문_자동화_script.js');
+
+test('stripWooriPrefix: "[우리카드]_" 접두사를 제거한다', () => {
+  assert.equal(stripWooriPrefix('[우리카드]_다이슨 슈퍼소닉 뉴럴 헤어 드라이기'), '다이슨 슈퍼소닉 뉴럴 헤어 드라이기');
+});
+
+test('stripWooriPrefix: "[우리카드] " (공백) 접두사도 제거한다', () => {
+  assert.equal(stripWooriPrefix('[우리카드] 스타벅스 아메리카노'), '스타벅스 아메리카노');
+});
+
+test('stripWooriPrefix: 접두사가 없으면 그대로 반환한다(양쪽 공백만 정리)', () => {
+  assert.equal(stripWooriPrefix('  스타벅스 아메리카노  '), '스타벅스 아메리카노');
+});
+
+test('extractSendMonth: 배송요청일(YYYYMMDD)에서 월을 숫자 문자열로 추출한다', () => {
+  assert.equal(extractSendMonth(['20260707'], { shipDate: 0 }), '7');
+  assert.equal(extractSendMonth(['20261203'], { shipDate: 0 }), '12');
+});
+
+test('extractSendMonth: shipDate 컬럼이 없거나 형식이 다르면 빈 문자열을 반환한다', () => {
+  assert.equal(extractSendMonth(['20260707'], { shipDate: -1 }), '');
+  assert.equal(extractSendMonth(['2026-07-07 10:30'], { shipDate: 0 }), '');
+  assert.equal(extractSendMonth([''], { shipDate: 0 }), '');
+});
 
 test('병합: 헤더가 같은 파일 여러 개는 순서대로 이어붙인다', () => {
   const filesData = [

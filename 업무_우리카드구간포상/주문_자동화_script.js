@@ -34,6 +34,19 @@ function extractZoneSu(mediaName) {
 }
 
 
+function stripWooriPrefix(name) {
+  return String(name || "").trim().replace(/^\[우리카드\][_ ]?/i, "");
+}
+
+
+function extractSendMonth(row, CI) {
+  if (CI.shipDate === -1 || !row[CI.shipDate]) return "";
+  var raw = String(row[CI.shipDate]).trim().replace(/[^0-9]/g, "");
+  if (raw.length !== 8) return "";
+  return String(parseInt(raw.slice(4, 6), 10));
+}
+
+
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("주문 자동화")
@@ -113,13 +126,16 @@ function convertAndSave() {
     dedupData.push(row);
   }
 
-  // 2단계: 실물 배송 시트 기배송 건 제외
-  var shippedPhones = getShippedPhones();
+  // 2단계: 실물 배송 시트에 "같은 전화번호 + 같은 발송월"로 이미 기록된 건만 제외
+  // (다른 달에 재당첨된 경우는 새로운 건이므로 제외하지 않음)
+  var shippedKeys = getShippedPhones();
   var alreadyShippedCount = 0;
   var finalData = [];
   for (var i = 0; i < dedupData.length; i++) {
     var phone = String(dedupData[i][CI.phone] || "").replace(/\D/g, "");
-    if (shippedPhones[phone]) {
+    var month = extractSendMonth(dedupData[i], CI);
+    var shipKey = phone + "|" + month;
+    if (shippedKeys[shipKey]) {
       alreadyShippedCount++;
     } else {
       finalData.push(dedupData[i]);
@@ -165,7 +181,7 @@ function convertAndSave() {
   var productMap = {};
   for (var i = 1; i < masterData.length; i++) {
     var row = masterData[i];
-    var name = String(row[mCI.name] || "").trim();
+    var name = stripWooriPrefix(row[mCI.name]);
     if (name) {
       productMap[name] = {
         purchasePrice: Number(row[mCI.purchasePrice]) || 0,
@@ -194,7 +210,7 @@ function convertAndSave() {
 }
 
 
-// 실물 배송 시트에서 이미 처리된 전화번호 객체 반환 {phone: true}
+// 실물 배송 시트에서 이미 기록된 "전화번호|발송월" 키 객체 반환 {"전화번호|월": true}
 function getShippedPhones() {
   try {
     var ss = SpreadsheetApp.openById(CONFIG.WOORICRD_SS_ID);
@@ -202,13 +218,14 @@ function getShippedPhones() {
     if (!sheet) return {};
     var lastRow = sheet.getLastRow();
     if (lastRow <= 3) return {};
-    var values = sheet.getRange(4, 4, lastRow - 3, 1).getValues();
-    var phoneObj = {};
+    var values = sheet.getRange(4, 2, lastRow - 3, 3).getValues(); // B:발송월, C:좌수구간, D:휴대폰번호
+    var keyObj = {};
     for (var i = 0; i < values.length; i++) {
-      var p = String(values[i][0]).replace(/\D/g, "");
-      if (p) phoneObj[p] = true;
+      var month = String(values[i][0]).trim();
+      var p = String(values[i][2]).replace(/\D/g, "");
+      if (p && month) keyObj[p + "|" + month] = true;
     }
-    return phoneObj;
+    return keyObj;
   } catch(e) {
     Logger.log("실물 배송 시트 로드 실패: " + e);
     return {};
@@ -222,7 +239,7 @@ function makeOutputSheet(ss, dedupData, CI, productMap, today, warnings) {
   var no = 1;
   for (var i = 0; i < dedupData.length; i++) {
     var row = dedupData[i];
-    var productName = String(row[CI.product] || "").trim().replace(/^\[우리카드\][_ ]?/i, "");
+    var productName = stripWooriPrefix(row[CI.product]);
     var info = productMap[productName];
     if (!info) warnings.push('"' + productName + '" - 마스터에 없는 상품명');
 
@@ -269,7 +286,7 @@ function makeRequisitionSheet(ss, dedupData, CI, productMap, today) {
   var productQty = {};
   for (var i = 0; i < dedupData.length; i++) {
     var row = dedupData[i];
-    var name = String(row[CI.product] || "").trim().replace(/^\[우리카드\][_ ]?/i, "");
+    var name = stripWooriPrefix(row[CI.product]);
     var qty = Number(row[CI.qty]) || 1;
     if (!name) continue;
     productQty[name] = (productQty[name] || 0) + qty;
@@ -353,16 +370,12 @@ function appendToWooriCard(dedupData, CI) {
     var phoneStr = formatPhone(rawTel);
     var zoneSu   = CI.mediaName !== -1 ? extractZoneSu(row[CI.mediaName]) : "";
 
-    var sendMonth   = "";
+    var sendMonth   = extractSendMonth(row, CI);
     var shipDateFmt = "";
     if (CI.shipDate !== -1 && row[CI.shipDate]) {
       var raw = String(row[CI.shipDate]).trim().replace(/[^0-9]/g, "");
       if (raw.length === 8) {
-        var yyyy = raw.slice(0, 4);
-        var mm   = raw.slice(4, 6);
-        var dd   = raw.slice(6, 8);
-        sendMonth   = String(parseInt(mm, 10));
-        shipDateFmt = yyyy + "-" + mm + "-" + dd;
+        shipDateFmt = raw.slice(0, 4) + "-" + raw.slice(4, 6) + "-" + raw.slice(6, 8);
       }
     }
 
@@ -488,5 +501,9 @@ function mergeRawFiles(filesData) {
 
 
 if (typeof module !== 'undefined') {
-  module.exports = { mergeRawFiles: mergeRawFiles };
+  module.exports = {
+    mergeRawFiles: mergeRawFiles,
+    stripWooriPrefix: stripWooriPrefix,
+    extractSendMonth: extractSendMonth
+  };
 }
