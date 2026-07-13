@@ -313,9 +313,9 @@ def _render_report(rows):
             df_chart = df[sel]
 
         if _CHART_TYPE.get(section_title) == "line":
-            st.line_chart(df_chart, use_container_width=True)
+            st.line_chart(df_chart, width="stretch")
         else:
-            st.bar_chart(df_chart, use_container_width=True)
+            st.bar_chart(df_chart, width="stretch")
 
     def _section_with_toggle(section_title, data_rows, show_title=True):
         if show_title:
@@ -414,7 +414,7 @@ with st.sidebar:
     sel_month = st.selectbox("월 선택", month_options)
 
     st.divider()
-    if st.button("🔄 새로고침", use_container_width=True):
+    if st.button("🔄 새로고침", width="stretch"):
         st.cache_data.clear()
         st.rerun()
 
@@ -499,7 +499,7 @@ if page == "📊 종합":
         monthly_df = pd.DataFrame(rows).rename(columns={"수익률_면가(%)": "수익률(%)"})
         st.dataframe(
             _fmt(monthly_df),
-            use_container_width=True, hide_index=True,
+            width="stretch", hide_index=True,
         )
 
     st.divider()
@@ -511,7 +511,7 @@ if page == "📊 종합":
         df_sp = df_sp[["공급사명", "상품명", "면가", "발행수", "교환수", "만료수",
                         "교환율(%)", "정산금액", "확정수익", "잠재수익"]]
         df_sp = df_sp.rename(columns={"공급사명": "브랜드명", "상품명": "경품명"})
-        st.dataframe(_fmt(df_sp), use_container_width=True, hide_index=True)
+        st.dataframe(_fmt(df_sp), width="stretch", hide_index=True)
     else:
         st.caption("경품 데이터 없음")
 
@@ -522,7 +522,7 @@ if page == "📊 종합":
         df_sc["사용율(%)"] = (df_sc["사용수"] / df_sc["발행수"] * 100).round(1)
         df_sc = df_sc[["쿠폰명", "면가", "발행수", "사용수", "만료수",
                         "사용율(%)", "정산금액", "확정수익", "잠재수익"]]
-        st.dataframe(_fmt(df_sc), use_container_width=True, hide_index=True)
+        st.dataframe(_fmt(df_sc), width="stretch", hide_index=True)
     else:
         st.caption("쿠폰 데이터 없음")
 
@@ -601,7 +601,7 @@ elif page == "🎁 경품":
     _sty_p = _fmt(_disp_p, skip_fmt=["확정수익", "잠재수익"])
     _sty_p = _sty_p.apply(lambda _: _확정_p_style, subset=["확정수익"], axis=0)
     _sty_p = _sty_p.apply(lambda _: _잠재_p_style, subset=["잠재수익"], axis=0)
-    st.dataframe(_sty_p, use_container_width=True, hide_index=True)
+    st.dataframe(_sty_p, width="stretch", hide_index=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -678,7 +678,7 @@ elif page == "🎟 할인쿠폰":
     _sty_c = _fmt(_disp_c, skip_fmt=["확정수익", "잠재수익"])
     _sty_c = _sty_c.apply(lambda _: _확정_c_style, subset=["확정수익"], axis=0)
     _sty_c = _sty_c.apply(lambda _: _잠재_c_style, subset=["잠재수익"], axis=0)
-    st.dataframe(_sty_c, use_container_width=True, hide_index=True)
+    st.dataframe(_sty_c, width="stretch", hide_index=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -758,7 +758,7 @@ elif page == "📐 시뮬레이션":
                 pc["예상 확정수익률(%)"] = (pc["예상 수익"] / (pc["발행수"] * pc["면가"]) * 100).where(pc["예상 정산"] > 0).round(1)
                 pc = pc[["게임명", "상품", "발행수", "예상 교환수", "예상 만료수",
                           "예상 정산", "예상 교환금액", "예상 수수료", "예상 수익", "예상 확정수익률(%)"]]
-                st.dataframe(_fmt(pc), use_container_width=True, hide_index=True)
+                st.dataframe(_fmt(pc), width="stretch", hide_index=True)
             if not coupon_calc.empty:
                 st.markdown("**쿠폰별 예상 결과**")
                 cc = coupon_calc[["게임명", "쿠폰명", "면가", "발행수", "예상 사용수", "예상 만료수",
@@ -767,7 +767,7 @@ elif page == "📐 시뮬레이션":
                 cc["예상 확정수익률(%)"] = (cc["예상 수익"] / (cc["발행수"] * cc["면가"]) * 100).where(cc["예상 정산"] > 0).round(1)
                 cc = cc[["게임명", "쿠폰", "발행수", "예상 사용수", "예상 만료수",
                           "예상 정산", "예상 교환금액", "예상 수익", "예상 확정수익률(%)"]]
-                st.dataframe(_fmt(cc), use_container_width=True, hide_index=True)
+                st.dataframe(_fmt(cc), width="stretch", hide_index=True)
     else:
         st.info("아래에서 수치를 수정한 후 [📊 결과 계산] 버튼을 클릭하세요.")
 
@@ -795,7 +795,7 @@ elif page == "📐 시뮬레이션":
         st.subheader("🎁 경품 — 미교환율 조정")
         edited_p_state = st.data_editor(
             disp_p[["게임명", "상품", "게임P", "발행수", "교환수", "만료수", "수수료율", "현재 미교환율(%)", "예상 미교환율(%)"]],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             disabled=["게임명", "상품", "게임P", "발행수", "교환수", "만료수", "수수료율", "현재 미교환율(%)"],
             column_config={
@@ -828,7 +828,7 @@ elif page == "📐 시뮬레이션":
         st.subheader("🎟 할인쿠폰 — 미사용율 조정")
         edited_c_state = st.data_editor(
             disp_c[["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수", "현재 미사용율(%)", "예상 미사용율(%)"]],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             disabled=["게임명", "쿠폰", "게임P", "발행수", "사용수", "만료수", "현재 미사용율(%)"],
             column_config={
@@ -841,8 +841,8 @@ elif page == "📐 시뮬레이션":
         )
 
     col_btn1, col_btn2, _ = st.columns([1, 1, 4])
-    run_calc = col_btn1.button("📊 결과 계산", type="primary", use_container_width=True)
-    if col_btn2.button("↺ 초기화", use_container_width=True):
+    run_calc = col_btn1.button("📊 결과 계산", type="primary", width="stretch")
+    if col_btn2.button("↺ 초기화", width="stretch"):
         st.session_state.sim_prize_adj = {}
         st.session_state.sim_coupon_adj = {}
         st.session_state.sim_result_ready = False
@@ -868,6 +868,12 @@ elif page == "📤 보고 생성":
     if not can_generate:
         st.error("보고 생성 권한이 없습니다.")
         st.stop()
+
+    _is_cloud = os.environ.get("STREAMLIT_SHARING_MODE") or os.environ.get("HOME", "") == "/home/appuser"
+    if _is_cloud:
+        st.warning("⚠️ 보고 생성은 메모리 제한으로 인해 **로컬 환경에서만** 실행 가능합니다.\n\n로컬에서 `보고생성.bat` 또는 `python report_generator.py`를 실행해주세요.")
+        st.stop()
+
     import tempfile, shutil, sys, io
     from contextlib import redirect_stdout
     import report_generator as rg
@@ -937,7 +943,7 @@ elif page == "📤 보고 생성":
         st.warning("⚠️ 전체 덮어쓰기 모드: 기존 구글시트 데이터가 모두 삭제되고 업로드한 파일로 재산출됩니다.")
         overwrite_confirmed = st.checkbox("확인했습니다. 기존 데이터를 삭제하고 덮어씁니다.")
 
-    if st.button("📊 보고 생성", type="primary", disabled=not (all_ready and overwrite_confirmed), use_container_width=True):
+    if st.button("📊 보고 생성", type="primary", disabled=not (all_ready and overwrite_confirmed), width="stretch"):
         log_box = st.empty()
         log_lines = []
 
@@ -1026,7 +1032,7 @@ elif page == "📋 내부보고":
                 columns=df_gd.columns
             )
             df_show = pd.concat([df_gd, total_row], ignore_index=True)
-            st.dataframe(df_show, use_container_width=True, hide_index=True,
+            st.dataframe(df_show, width="stretch", hide_index=True,
                          column_config={"날짜": st.column_config.TextColumn("날짜", width=100),
                                         "합계": st.column_config.NumberColumn("합계", format="%d")})
 
