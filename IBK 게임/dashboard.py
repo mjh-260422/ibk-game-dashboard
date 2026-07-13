@@ -869,11 +869,6 @@ elif page == "📤 보고 생성":
         st.error("보고 생성 권한이 없습니다.")
         st.stop()
 
-    _is_cloud = os.environ.get("STREAMLIT_SHARING_MODE") or os.environ.get("HOME", "") == "/home/appuser"
-    if _is_cloud:
-        st.warning("⚠️ 보고 생성은 메모리 제한으로 인해 **로컬 환경에서만** 실행 가능합니다.\n\n로컬에서 `보고생성.bat` 또는 `python report_generator.py`를 실행해주세요.")
-        st.stop()
-
     import tempfile, shutil, sys, io
     from contextlib import redirect_stdout
     import report_generator as rg

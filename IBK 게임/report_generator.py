@@ -396,60 +396,59 @@ def weekday_kr(val):
 
 
 def load_raw(paths):
+    import gc
     if isinstance(paths, str): paths = [paths]
-    dfs = []
+    cols = None
+    all_dfs = []
     for path in paths:
         print(f'  로우데이터 읽기: {os.path.basename(path)}')
-        dfs.append(pd.read_excel(path, dtype=str))
-    df = pd.concat(dfs, ignore_index=True) if len(dfs) > 1 else dfs[0]
-    print(f'  합계 행수: {len(df)}')
-    df.columns = [str(c).strip() for c in df.columns]
+        df = pd.read_excel(path, dtype=str)
+        df.columns = [str(c).strip() for c in df.columns]
 
-    col_userId = find_col(df, '사용자 ID')
-    col_gameName = find_col(df, '게임명')
-    col_gameDate = find_col(df, '게임 실행일')
-    col_points = find_col(df, '차감 포인트')
-    col_ptSt = find_col(df, '포인트 차감 상태')
-    col_gameResult = find_col(df, '게임 결과')
-    col_prizeName = find_col(df, '경품명')
-    col_prizeCode = find_col(df, '경품코드')
-    col_prizeStatus = find_col(df, '경품 지급 상태')
-    col_txId = find_col(df, '거래번호')
+        if cols is None:
+            col_userId    = find_col(df, '사용자 ID')
+            col_gameName  = find_col(df, '게임명')
+            col_gameDate  = find_col(df, '게임 실행일')
+            col_points    = find_col(df, '차감 포인트')
+            col_ptSt      = find_col(df, '포인트 차감 상태')
+            col_gameResult= find_col(df, '게임 결과')
+            col_prizeName = find_col(df, '경품명')
+            col_prizeCode = find_col(df, '경품코드')
+            col_prizeStatus=find_col(df, '경품 지급 상태')
+            col_txId      = find_col(df, '거래번호')
+            cols = {
+                'userId': col_userId, 'gameName': col_gameName,
+                'gameDate': col_gameDate, 'points': col_points,
+                'ptSt': col_ptSt, 'gameResult': col_gameResult,
+                'prizeName': col_prizeName, 'prizeCode': col_prizeCode,
+                'prizeStatus': col_prizeStatus, 'txId': col_txId,
+            }
 
-    print(f'  원본 행수: {len(df)}')
+        mask = pd.Series([True] * len(df))
+        if cols['gameResult']:
+            mask &= df[cols['gameResult']] != '준비'
+        if cols['ptSt']:
+            mask &= ~df[cols['ptSt']].isin(['실패', '취소'])
+        if cols['gameDate']:
+            def after_launch(v):
+                dt = parse_datetime(v)
+                if dt is None:
+                    return True
+                return dt >= LAUNCH_DT
+            mask &= df[cols['gameDate']].apply(after_launch)
 
-    mask = pd.Series([True] * len(df))
-    if col_gameResult:
-        mask &= df[col_gameResult] != '준비'
-    if col_ptSt:
-        mask &= ~df[col_ptSt].isin(['실패', '취소'])
-    if col_gameDate:
-        def after_launch(v):
-            dt = parse_datetime(v)
-            if dt is None:
-                return True
-            return dt >= LAUNCH_DT
-        mask &= df[col_gameDate].apply(after_launch)
+        df = df[mask]
+        keep = [c for c in cols.values() if c and c in df.columns]
+        all_dfs.append(df[keep].copy())
+        del df; gc.collect()
 
-    df = df[mask].copy()
+    df = pd.concat(all_dfs, ignore_index=True) if len(all_dfs) > 1 else all_dfs[0]
+    del all_dfs; gc.collect()
 
-    if col_txId:
-        df = df.drop_duplicates(subset=[col_txId])
+    if cols['txId']:
+        df = df.drop_duplicates(subset=[cols['txId']])
 
-    print(f'  필터 후 행수: {len(df)}')
-
-    cols = {
-        'userId': col_userId,
-        'gameName': col_gameName,
-        'gameDate': col_gameDate,
-        'points': col_points,
-        'ptSt': col_ptSt,
-        'gameResult': col_gameResult,
-        'prizeName': col_prizeName,
-        'prizeCode': col_prizeCode,
-        'prizeStatus': col_prizeStatus,
-        'txId': col_txId,
-    }
+    print(f'  필터+중복제거 후 행수: {len(df)}')
     return df, cols
 
 
@@ -460,79 +459,98 @@ def read_file(path):
     return read_csv(path)
 
 def load_coupon(paths):
+    import gc
     if isinstance(paths, str): paths = [paths]
-    dfs = []
+    c_cols = None
+    all_dfs = []
     for path in paths:
         print(f'  할인쿠폰 읽기: {os.path.basename(path)}')
-        dfs.append(read_file(path))
-    df = pd.concat(dfs, ignore_index=True) if len(dfs) > 1 else dfs[0]
-    df.columns = [str(c).strip() for c in df.columns]
+        df = read_file(path)
+        df.columns = [str(c).strip() for c in df.columns]
 
-    col_name = find_col(df, '쿠폰명')
-    col_code = find_col(df, '상품코드')
-    col_pin = find_col(df, '핀번호')
-    col_date = find_col(df, '발행일자') or find_col(df, '생성일')
-    col_time = find_col(df, '생성시간')
-    col_exp  = find_col(df, '유효기간종료일') or find_col(df, '유효기간종료') or find_col(df, '만료일') or find_col(df, '사용기한')
+        if c_cols is None:
+            col_name = find_col(df, '쿠폰명')
+            col_code = find_col(df, '상품코드')
+            col_pin  = find_col(df, '핀번호')
+            col_date = find_col(df, '발행일자') or find_col(df, '생성일')
+            col_time = find_col(df, '생성시간')
+            col_exp  = (find_col(df, '유효기간종료일') or find_col(df, '유효기간종료')
+                        or find_col(df, '만료일') or find_col(df, '사용기한'))
+            c_cols = {'name': col_name, 'code': col_code, 'pin': col_pin,
+                      'date': col_date, 'time': col_time, 'exp': col_exp}
 
-    if col_pin:
-        df = df.drop_duplicates(subset=[col_pin])
+        if c_cols['date']:
+            col_date = c_cols['date']; col_time = c_cols['time']
+            def after_launch_coupon(row):
+                date_str = str(row[col_date]).strip()
+                if col_time:
+                    time_str = str(row[col_time]).strip()
+                    if time_str and time_str not in ('nan', ''):
+                        dt = parse_datetime(date_str + ' ' + time_str)
+                        if dt is not None:
+                            return dt >= LAUNCH_DT
+                dt = parse_datetime(date_str)
+                if dt is None:
+                    return True
+                if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
+                    return dt.date() >= LAUNCH_DT.date()
+                return dt >= LAUNCH_DT
+            df = df[df.apply(after_launch_coupon, axis=1)]
 
-    if col_date:
-        def after_launch_coupon(row):
-            date_str = str(row[col_date]).strip()
-            if col_time:
-                time_str = str(row[col_time]).strip()
-                if time_str and time_str not in ('nan', ''):
-                    dt = parse_datetime(date_str + ' ' + time_str)
-                    if dt is not None:
-                        return dt >= LAUNCH_DT
-            dt = parse_datetime(date_str)
-            if dt is None:
-                return True
-            # 날짜만 있는 경우 날짜 단위로 비교 (시간 불명 → 당일 전체 포함)
-            if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
-                return dt.date() >= LAUNCH_DT.date()
-            return dt >= LAUNCH_DT
-        df = df[df.apply(after_launch_coupon, axis=1)].copy()
+        keep = [c for c in c_cols.values() if c and c in df.columns]
+        all_dfs.append(df[keep].copy())
+        del df; gc.collect()
 
-    print(f'  쿠폰 필터 후 행수: {len(df)}')
-    return df, {'name': col_name, 'code': col_code, 'pin': col_pin, 'date': col_date, 'time': col_time, 'exp': col_exp}
+    df = pd.concat(all_dfs, ignore_index=True) if len(all_dfs) > 1 else all_dfs[0]
+    del all_dfs; gc.collect()
+
+    if c_cols['pin']:
+        df = df.drop_duplicates(subset=[c_cols['pin']])
+
+    print(f'  쿠폰 필터+중복제거 후 행수: {len(df)}')
+    return df, c_cols
 
 
 def load_prize_csv(paths):
+    import gc
     if isinstance(paths, str): paths = [paths]
-    dfs = []
+    p_cols = None
+    all_dfs = []
     for path in paths:
         print(f'  매체사경품 읽기: {os.path.basename(path)}')
-        dfs.append(read_file(path))
-    df = pd.concat(dfs, ignore_index=True) if len(dfs) > 1 else dfs[0]
-    df.columns = [str(c).strip() for c in df.columns]
+        df = read_file(path)
+        df.columns = [str(c).strip() for c in df.columns]
 
-    col_trid = find_col(df, 'B2B2C_TR_ID')
-    col_status = find_col(df, '핀상태')
-    col_exp = find_col(df, '유효기간')
-    col_pin = find_col(df, '핀번호')
-    col_price = find_col(df, '공급가격')
-    col_mms = find_col(df, 'MMS발송일')
-    col_mms_time = find_col(df, 'MMS발송시간')
+        if p_cols is None:
+            col_trid     = find_col(df, 'B2B2C_TR_ID')
+            col_status   = find_col(df, '핀상태')
+            col_exp      = find_col(df, '유효기간')
+            col_pin      = find_col(df, '핀번호')
+            col_price    = find_col(df, '공급가격')
+            col_mms      = find_col(df, 'MMS발송일')
+            col_mms_time = find_col(df, 'MMS발송시간')
+            p_cols = {'trid': col_trid, 'status': col_status, 'exp': col_exp,
+                      'pin': col_pin, 'price': col_price, 'mms': col_mms, 'mms_time': col_mms_time}
 
-    if col_trid:
-        df[col_trid] = df[col_trid].apply(clean_trid)
-        df = df[df[col_trid].str.startswith('GAME_', na=False)].copy()
+        if p_cols['trid']:
+            df[p_cols['trid']] = df[p_cols['trid']].apply(clean_trid)
+            df = df[df[p_cols['trid']].str.startswith('GAME_', na=False)]
+        if p_cols['status']:
+            df = df[~df[p_cols['status']].str.contains('취소|환불', na=False)]
 
-    if col_status:
-        df = df[~df[col_status].str.contains('취소|환불', na=False)].copy()
+        keep = [c for c in p_cols.values() if c and c in df.columns]
+        all_dfs.append(df[keep].copy())
+        del df; gc.collect()
 
-    if col_pin:
-        df[col_pin] = df[col_pin].apply(clean_trid)
-        df = df.drop_duplicates(subset=[col_pin])
+    df = pd.concat(all_dfs, ignore_index=True) if len(all_dfs) > 1 else all_dfs[0]
+    del all_dfs; gc.collect()
+
+    if p_cols['pin']:
+        df[p_cols['pin']] = df[p_cols['pin']].apply(clean_trid)
+        df = df.drop_duplicates(subset=[p_cols['pin']])
 
     print(f'  경품 GAME_ 필터 후 행수: {len(df)}')
-    return df, {
-        'trid': col_trid, 'status': col_status, 'exp': col_exp,
-        'pin': col_pin, 'price': col_price, 'mms': col_mms, 'mms_time': col_mms_time
-    }
+    return df, p_cols
 
 
 def compute_prize_usage(prize_df, pcols, txToGame, txToPrize):
