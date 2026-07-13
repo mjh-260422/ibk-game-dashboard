@@ -2306,18 +2306,26 @@ def detect_file_type(path):
     try:
         ext = os.path.splitext(path)[1].lower()
         if ext in ('.xlsx', '.xls'):
-            df = pd.read_excel(path, nrows=0, dtype=str)
+            import openpyxl
+            wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+            ws = wb.active
+            header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+            wb.close()
+            if not header_row:
+                return name_hint
+            col_list = [str(c) if c is not None else '' for c in header_row]
         else:
-            df = None
+            col_list = None
             for enc in ('cp949', 'euc-kr', 'utf-8-sig'):
                 try:
                     df = pd.read_csv(path, nrows=0, encoding=enc, dtype=str)
+                    col_list = [str(c) for c in df.columns]
                     break
                 except Exception:
                     continue
-        if df is None:
+        if col_list is None:
             return name_hint
-        cols = ' '.join(str(c) for c in df.columns)
+        cols = ' '.join(col_list)
         # 매체사경품: B2B2C_TR_ID 또는 핀상태+공급가격
         if 'B2B2C_TR_ID' in cols or ('핀상태' in cols and '공급가격' in cols):
             return 'prize'
