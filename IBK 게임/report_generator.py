@@ -1911,7 +1911,6 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
     existing_daily = read_sheet(service, '집계_일별')
     existing_dates = set(existing_daily['날짜'].tolist()) if not existing_daily.empty and '날짜' in existing_daily.columns else set()
     existing_gd = read_sheet(service, '집계_게임_일별')
-    existing_gd_dates = set(existing_gd['날짜'].tolist()) if not existing_gd.empty and '날짜' in existing_gd.columns else set()
     existing_users = read_set(service, '집계_유저')
 
     existing_mu_df = read_sheet(service, '집계_유저_월별')
@@ -1922,11 +1921,18 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
             if mk not in existing_mu: existing_mu[mk] = set()
             existing_mu[mk].add(uid)
 
-    # 날짜 필터: 이미 처리된 날짜 제외
+    # 집계_누적.데이터종료를 기준으로 처리 (쿠폰 선행으로 집계_일별에 먼저 들어간 날짜 재처리 허용)
+    existing_summary_pre = read_sheet(service, '집계_누적')
+    cutoff = str(existing_summary_pre.iloc[0].get('데이터종료', '')) if not existing_summary_pre.empty else ''
+    print(f'  [진단] 기존 데이터종료(cutoff): {cutoff!r}')
+
+    # 날짜 필터: 집계_누적 확정 기준일 이후 데이터만 처리
     if rcols['gameDate']:
         raw_df = raw_df.copy()
         raw_df['_date'] = raw_df[rcols['gameDate']].apply(day_key)
-        raw_df = raw_df[~raw_df['_date'].isin(existing_dates)]
+        if cutoff:
+            raw_df = raw_df[raw_df['_date'] > cutoff]
+        # cutoff 없으면(첫 실행) 전체 처리
 
     if raw_df.empty:
         print('  새로 처리할 날짜가 없습니다. 수익률 탭만 재생성합니다.')
@@ -2002,8 +2008,8 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
     ).sum() if rcols['points'] else 0
     prize_done_new = raw_df[raw_df[rcols['prizeStatus']] == '완료'].shape[0] if rcols['prizeStatus'] else 0
 
-    # 누적 업데이트
-    existing_summary = read_sheet(service, '집계_누적')
+    # 누적 업데이트 (상단에서 미리 읽은 existing_summary_pre 재사용)
+    existing_summary = existing_summary_pre
     if not existing_summary.empty:
         s = existing_summary.iloc[0]
         total_all = int(str(s.get('총실행수', 0) or 0)) + total_new
@@ -2013,11 +2019,13 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
         fail_all = total_all - done_all
         min_d = str(s.get('데이터시작', ''))
         max_d = new_dates[-1] if new_dates else str(s.get('데이터종료', ''))
-        all_days = len(existing_dates) + len(new_dates)
+        # cutoff 이하 날짜만 기존 처리일수로 계산 (cutoff 초과 날짜는 new_dates에서 재처리)
+        existing_confirmed_days = set(d for d in existing_dates if not cutoff or str(d) <= cutoff)
+        all_days = len(existing_confirmed_days) + len(new_dates)
         avg_runs = round(total_all / all_days) if all_days else 0
         daily_u = raw_df.groupby('_date')[rcols['userId']].nunique().mean() if (rcols['userId'] and '_date' in raw_df.columns) else 0
         existing_avg_u = float(str(s.get('일평균참여자', 0) or 0))
-        avg_u = round((existing_avg_u * len(existing_dates) + daily_u * len(new_dates)) / all_days) if all_days else 0
+        avg_u = round((existing_avg_u * len(existing_confirmed_days) + daily_u * len(new_dates)) / all_days) if all_days else 0
     else:
         total_all = total_new; unique_all = len(new_users); pts_all = int(total_pts_new)
         done_all = prize_done_new; fail_all = total_all - done_all
@@ -2211,40 +2219,46 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
                                       txToPrize=txToPrize, face_map=face_map_u)
     new_day_rows = []
     for dk in sorted(daily_stats.keys()):
-        if dk in existing_dates: continue
+        if cutoff and dk <= cutoff: continue  # cutoff 확정 기준일 이하는 건너뜀
         d = daily_stats[dk]
         ca = d.get('couponAmt', 0); pa = d.get('prizeAmt', 0)
         new_day_rows.append([dk, weekday_kr(dk), int(d.get('points',0)), int(ca+pa), d.get('couponCnt',0), int(ca), d.get('prizeCnt',0), int(pa)])
     if new_day_rows:
-        # 기존 일별 데이터 + 새 데이터 합쳐서 날짜순 정렬 후 전체 재기록
+        # 기존 일별 데이터(cutoff 이하만 유지) + 새 데이터 합쳐서 날짜순 정렬 후 전체 재기록
+        # (이전 실행에서 쿠폰만 들어간 cutoff 초과 날짜는 삭제 후 재계산)
         all_day_rows = [['날짜','요일','소진포인트','총혜택금액','할인쿠폰발행','할인쿠폰총액','경품발행','경품총액']]
         if not existing_daily.empty:
             for _, row in existing_daily.iterrows():
+                if cutoff and str(row.get('날짜', '')) > cutoff: continue  # cutoff 초과 기존 행 제거
                 all_day_rows.append([row.get('날짜',''), row.get('요일',''), row.get('소진포인트',0), row.get('총혜택금액',0), row.get('할인쿠폰발행',0), row.get('할인쿠폰총액',0), row.get('경품발행',0), row.get('경품총액',0)])
         all_day_rows += new_day_rows
         all_day_rows[1:] = sorted(all_day_rows[1:], key=lambda x: str(x[0]))
         write_sheet(service, '집계_일별', all_day_rows)
-        print(f'  집계_일별 {len(new_day_rows)}일 추가')
+        print(f'  집계_일별 {len(new_day_rows)}일 추가/갱신')
 
     new_gd_cnt = {}
     if rcols['gameName'] and rcols['gameDate']:
         for _, row in raw_df.iterrows():
             dk = day_key(row.get(rcols['gameDate'], ''))
-            if dk in existing_gd_dates:
-                continue
+            if cutoff and dk <= cutoff: continue  # cutoff 이하 날짜는 이미 처리됨
             gn = str(row.get(rcols['gameName'], '')).strip()
             if dk and gn and gn != 'nan':
                 new_gd_cnt.setdefault(dk, {})
                 new_gd_cnt[dk][gn] = new_gd_cnt[dk].get(gn, 0) + 1
     if new_gd_cnt:
-        prev_gd = existing_gd.values.tolist() if not existing_gd.empty else []
+        # cutoff 이하만 기존 데이터 유지 (cutoff 초과 날짜는 새로 재계산)
+        prev_gd = []
+        if not existing_gd.empty:
+            for row in existing_gd.values.tolist():
+                if cutoff and str(row[0]) > cutoff: continue
+                prev_gd.append(row)
         new_gd_rows = []
         for dk in sorted(new_gd_cnt.keys()):
             for gn, cnt in sorted(new_gd_cnt[dk].items()):
                 new_gd_rows.append([dk, gn, cnt])
         all_gd = [['날짜', '게임명', '실행수']] + prev_gd + new_gd_rows
         write_sheet(service, '집계_게임_일별', all_gd)
-        print(f'  집계_게임_일별 {len(new_gd_rows)}행 추가')
+        print(f'  집계_게임_일별 {len(new_gd_rows)}행 추가/갱신')
 
     # 유저 추가
     if new_users:
