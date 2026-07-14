@@ -1929,6 +1929,20 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
 
     if raw_df.empty:
         print('  새로 처리할 날짜가 없습니다. 수익률 탭만 재생성합니다.')
+
+        # 집계_일별 실제 최신 날짜로 집계_누적 데이터종료 동기화
+        # (이전 실행이 집계_일별은 썼지만 집계_누적 갱신 전 실패했을 경우 복구)
+        if not existing_daily.empty and '날짜' in existing_daily.columns:
+            actual_max = max(str(d) for d in existing_daily['날짜'].tolist() if d)
+            cur_sum = read_sheet(service, '집계_누적')
+            if not cur_sum.empty:
+                cur_end = str(cur_sum.iloc[0].get('데이터종료', ''))
+                if actual_max > cur_end:
+                    print(f'  집계_누적 데이터종료 동기화: {cur_end} → {actual_max}')
+                    row0 = cur_sum.iloc[0].to_dict()
+                    row0['데이터종료'] = actual_max
+                    write_sheet(service, '집계_누적', [list(row0.keys()), list(row0.values())])
+
         master_df = read_sheet(service, '경품코드 마스터')
         vendor_map_e, face_map_e, fee_map_e = {}, {}, {}
         if not master_df.empty:
