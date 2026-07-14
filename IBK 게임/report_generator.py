@@ -1417,6 +1417,7 @@ def write_internal_report(service):
         date_end     = str(s.get('데이터종료', ''))
         avg_runs     = int(str(s.get('일평균실행', 0) or 0))
         avg_users    = int(str(s.get('일평균참여자', 0) or 0))
+    print(f'  [진단] write_internal_report 읽은 date_end = {date_end!r}')
     avg_pts    = round(total_pts / total_runs) if total_runs else 0
     date_range = f'{date_start} ~ {date_end}' if date_start else ''
 
@@ -2023,6 +2024,7 @@ def run_append(raw_df, rcols, coupon_df, ccols, prize_df, pcols, service):
         min_d = new_dates[0] if new_dates else ''; max_d = new_dates[-1] if new_dates else ''
         avg_runs = 0; avg_u = 0
 
+    print(f'  [진단] 집계_누적 데이터종료 → {max_d!r}')
     write_sheet(service, '집계_누적', [
         ['총실행수','유니크참여자','총소진포인트','경품완료','경품실패','데이터시작','데이터종료','일평균실행','일평균참여자'],
         [total_all, unique_all, pts_all, done_all, fail_all, min_d, max_d, avg_runs, avg_u]
