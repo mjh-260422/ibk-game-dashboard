@@ -31,7 +31,7 @@ def _batch_update(service, requests, max_retries=5):
                 spreadsheetId=SPREADSHEET_ID,
                 body={"requests": requests}
             ).execute()
-            time.sleep(1)
+            time.sleep(0.5)
             return result
         except HttpError as e:
             if e.resp.status == 429 and attempt < max_retries - 1:
@@ -89,7 +89,7 @@ def _values_call(fn, max_retries=5):
     for attempt in range(max_retries):
         try:
             result = fn()
-            time.sleep(1)
+            time.sleep(0.5)
             return result
         except HttpError as e:
             if e.resp.status == 429 and attempt < max_retries - 1:

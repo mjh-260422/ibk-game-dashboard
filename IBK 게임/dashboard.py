@@ -987,14 +987,22 @@ elif page == "📤 보고 생성":
             st.success("보고 생성 완료! 다른 탭에서 최신 데이터를 확인하세요.")
             st.cache_data.clear()
 
-        except BrokenPipeError:
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
             shutil.rmtree(_tmpdir, ignore_errors=True)
-            st.success("보고 생성 완료! 다른 탭에서 최신 데이터를 확인하세요.")
-            st.cache_data.clear()
+            try:
+                log(f"⚠️ 네트워크 연결 오류 (데이터 저장 여부 불확실): {e}")
+                log("구글시트에서 데이터가 정상 저장됐는지 직접 확인 후, 누락 시 재실행하세요.")
+                st.warning("네트워크 오류가 발생했습니다. 구글시트에서 데이터 저장 여부를 확인해주세요.")
+                st.cache_data.clear()
+            except Exception:
+                pass
         except Exception as e:
             shutil.rmtree(_tmpdir, ignore_errors=True)
-            log(f"❌ 오류: {e}")
-            st.error(f"오류 발생: {e}")
+            try:
+                log(f"❌ 오류: {e}")
+                st.error(f"오류 발생: {e}")
+            except Exception:
+                pass
 
 
 # ══════════════════════════════════════════════════════════════════════════════
